@@ -43,6 +43,15 @@ The app runs entirely in the browser, so it builds to plain static files (HTML, 
 2. In the repository, open **Settings → Pages** and set **Source** to **GitHub Actions**.
 3. Push to `main` (or run the workflow from the **Actions** tab). `.github/workflows/deploy-pages.yml` builds the site and publishes it to `https://<your-username>.github.io/<repo-name>/`.
 
+### Custom domain (biobuzz-strategy-lab.com)
+
+`public/CNAME` holds the domain name. To make it live:
+
+1. Buy `biobuzz-strategy-lab.com` from any domain registrar.
+2. In the registrar's DNS settings, add four `A` records for `@` pointing to `185.199.108.153`, `185.199.109.153`, `185.199.110.153` and `185.199.111.153`. Also add a `CNAME` record for `www` pointing to `<your-username>.github.io`.
+3. In the GitHub repo, go to **Settings → Pages**, enter `biobuzz-strategy-lab.com` under **Custom domain**, save, and tick **Enforce HTTPS** once it's available.
+4. Rerun the deploy workflow. With a custom domain the site is served from `/`, and the workflow adjusts the links automatically.
+
 To build the static files yourself, run `npm run build`. The output goes to `out/`, and you can upload that folder to any static host.
 
 ## How the model works
