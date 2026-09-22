@@ -54,7 +54,7 @@ export function MatchViewer({
     simulateMatch({ red, blue, profiles, settings, seed, record: true }),
   );
   const [frameIdx, setFrameIdx] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(4);
   const raf = useRef<number | null>(null);
 
