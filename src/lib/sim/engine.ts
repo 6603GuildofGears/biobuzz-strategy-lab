@@ -600,8 +600,9 @@ export function simulateMatch(input: MatchInput): MatchResult {
       if (t + 1e-9 < r.busyUntil) return;
       r.task = null;
       task.then();
-      if (!r.task) decide(r);
-      else if (r.task.to || (r.task.dur ?? 0) > 0) return;
+      const next = r.task as Task | null;
+      if (!next) decide(r);
+      else if (next.to || (next.dur ?? 0) > 0) return;
     }
   };
 

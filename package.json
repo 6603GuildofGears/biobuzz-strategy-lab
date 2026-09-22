@@ -1,12 +1,13 @@
 {
-  "name": "tmp-scaffold",
+  "name": "biobuzz-strategy-lab",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 4817 -H 0.0.0.0",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "next start -p 4817",
+    "lint": "eslint",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -28,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
