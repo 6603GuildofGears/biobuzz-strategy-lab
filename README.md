@@ -35,6 +35,16 @@ For a quick check from the command line (it prints one match log and a small tou
 npm run smoke -- Average   # or Rookie / Elite
 ```
 
+## Hosting on GitHub Pages
+
+The app runs entirely in the browser, so it builds to plain static files (HTML, JavaScript, CSS) that GitHub Pages can serve.
+
+1. Push this project to a GitHub repository.
+2. In the repository, open **Settings → Pages** and set **Source** to **GitHub Actions**.
+3. Push to `main` (or run the workflow from the **Actions** tab). `.github/workflows/deploy-pages.yml` builds the site and publishes it to `https://<your-username>.github.io/<repo-name>/`.
+
+To build the static files yourself, run `npm run build`. The output goes to `out/`, and you can upload that folder to any static host.
+
 ## How the model works
 
 The simulation code lives in `src/lib/sim/`:
