@@ -551,13 +551,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
       r.task = { dur: AUTO_END - t + 0.01, then: () => {} };
       return;
     }
-    const parkSpot = PARK_SPOT[r.alliance][r.slot];
-    if (auto) {
-      if (r.profile.autoPark && timeLeft() <= travel(r, parkSpot) + 0.8) {
-        goPark(r);
-        return;
-      }
-    } else if (r.role.park && timeLeft() <= travel(r, parkSpot) + 1.5) {
+    if (parkDue(r)) {
       goPark(r);
       return;
     }
@@ -571,7 +565,18 @@ export function simulateMatch(input: MatchInput): MatchResult {
     decideHive(r, r.role.ammo);
   };
 
+  const parkDue = (r: Robot) => {
+    if (r.mode === "park" || r.mode === "parked" || r.mode === "dead") return false;
+    const wantsPark = inAuto() ? r.profile.autoPark : r.role.park;
+    if (!wantsPark) return false;
+    return timeLeft() <= travel(r, PARK_SPOT[r.alliance][r.slot]) + (inAuto() ? 0.6 : 1.2);
+  };
+
   const step = (r: Robot) => {
+    if (parkDue(r)) {
+      releaseClaims(r);
+      goPark(r);
+    }
     if (!r.task) decide(r);
     for (let guard = 0; guard < 6 && r.task; guard++) {
       const task: Task = r.task;
