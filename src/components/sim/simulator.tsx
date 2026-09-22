@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Hexagon } from "lucide-react";
+import { BookOpen, Copy, Hexagon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DEFAULT_SETTINGS, PRESETS, STRATEGIES, defaultCustom } from "@/lib/sim/strategies";
 import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
 import { Assumptions } from "./assumptions";
+import { Guide } from "./guide";
 import { MatchViewer } from "./match-viewer";
 import { ProfileEditor, SettingsEditor } from "./profile-editor";
 import { Showdown } from "./showdown";
@@ -18,6 +19,7 @@ export function Simulator() {
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [custom, setCustom] = useState<Strategy>(defaultCustom);
   const [version, setVersion] = useState(0);
+  const [tab, setTab] = useState("showdown");
 
   const bump = () => setVersion((v) => v + 1);
   const strategies = useMemo(() => [...STRATEGIES, custom], [custom]);
@@ -34,9 +36,12 @@ export function Simulator() {
   return (
     <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 px-4 py-6 lg:px-8">
       <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Hexagon className="size-6 fill-amber-400 text-amber-500" />
           <h1 className="text-2xl font-bold tracking-tight">BIOBUZZ Strategy Lab</h1>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => setTab("guide")}>
+            <BookOpen /> How it works
+          </Button>
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Monte Carlo simulator for the 2026–27 FTC game. Set how fast and accurate your robots are, then play the strategies against each other to see which one wins the most.
@@ -95,12 +100,13 @@ export function Simulator() {
         </aside>
 
         <main className="min-w-0">
-          <Tabs defaultValue="showdown">
+          <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
             <TabsList className="flex-wrap">
               <TabsTrigger value="showdown">Strategy showdown</TabsTrigger>
               <TabsTrigger value="match">Match viewer</TabsTrigger>
               <TabsTrigger value="strategies">Strategies</TabsTrigger>
               <TabsTrigger value="rules">Rules &amp; assumptions</TabsTrigger>
+              <TabsTrigger value="guide">How to use</TabsTrigger>
             </TabsList>
             <TabsContent value="showdown" className="pt-3">
               <Showdown strategies={strategies} profiles={profiles} settings={settings} configVersion={version} />
@@ -120,6 +126,9 @@ export function Simulator() {
             </TabsContent>
             <TabsContent value="rules" className="pt-3">
               <Assumptions />
+            </TabsContent>
+            <TabsContent value="guide" className="pt-3">
+              <Guide />
             </TabsContent>
           </Tabs>
         </main>

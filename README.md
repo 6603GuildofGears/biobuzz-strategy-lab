@@ -7,6 +7,7 @@ A Monte Carlo strategy simulator for the FIRST Tech Challenge 2026–27 game **B
 - **Strategy showdown**: a round robin where every strategy plays every other strategy (plus a mirror match) from both sides of the field. It reports win rate, average score and margin, HIVE tips, FLOWER points, ranking points (RP), and how often each strategy reaches the POLLINATOR RP thresholds. It also shows a head-to-head matrix.
 - **Match viewer**: replays one simulated match on a top-down field with a live score, playback speed control, a scrubber, and an event log.
 - **Strategies**: seven built-in alliance strategies, plus a custom one where you set each robot's role.
+- **How to use**: an in-app guide (the **How it works** button in the header, or the **How to use** tab) that walks new users through setup and explains every result.
 - **Sliders**: robot drive speed, intake, launch, aim, and FLOWER placement times, launch range, accuracy, and AUTO reliability. The Game tab also has sliders for the parts the manual doesn't specify (HIVE tip threshold, NECTAR weight, FLOWER capacity, defense effect).
 
 ### Built-in strategies
