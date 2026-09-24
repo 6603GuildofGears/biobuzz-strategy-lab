@@ -16,6 +16,17 @@ import { cn } from "@/lib/utils";
 
 const MATCH_OPTIONS = [20, 50, 100, 200];
 
+type SavedShowdown = {
+  res: TournamentResult;
+  version: number;
+  strategies: Strategy[];
+  enabled: string[];
+  perPair: number;
+};
+
+/** Survives leaving the tab. The page used to remount and run the whole showdown again. */
+let savedShowdown: SavedShowdown | null = null;
+
 const SERIES = [
   { key: "tips", label: "HIVE tips", color: "#f59e0b" },
   { key: "cell", label: "Left in CELL", color: "#fcd34d" },
@@ -35,11 +46,17 @@ export function Showdown({
   settings: GameSettings;
   configVersion: number;
 }) {
-  const [enabled, setEnabled] = useState<Set<string>>(() => new Set(strategies.filter((s) => s.id !== "custom").map((s) => s.id)));
-  const [perPair, setPerPair] = useState(50);
+  const [enabled, setEnabled] = useState<Set<string>>(
+    () => new Set(savedShowdown?.enabled ?? strategies.filter((s) => s.id !== "custom").map((s) => s.id)),
+  );
+  const [perPair, setPerPair] = useState(
+    () => savedShowdown?.perPair ?? (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? 20 : 50),
+  );
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<{ res: TournamentResult; version: number; strategies: Strategy[] } | null>(null);
+  const [result, setResult] = useState<{ res: TournamentResult; version: number; strategies: Strategy[] } | null>(
+    () => (savedShowdown ? { res: savedShowdown.res, version: savedShowdown.version, strategies: savedShowdown.strategies } : null),
+  );
   const [error, setError] = useState<string | null>(null);
   const runId = useRef(0);
   const isMobile = useIsMobile();
@@ -58,7 +75,11 @@ export function Showdown({
         (d, t) => id === runId.current && setProgress(d / t),
         () => id !== runId.current,
       );
-      if (res && id === runId.current) setResult({ res, version: configVersion, strategies: selected });
+      if (res && id === runId.current) {
+        const next = { res, version: configVersion, strategies: selected };
+        savedShowdown = { ...next, enabled: selected.map((s) => s.id), perPair };
+        setResult(next);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -67,8 +88,12 @@ export function Showdown({
   };
 
   useEffect(() => {
+    if (savedShowdown) return;
     const id = setTimeout(run, 0);
-    return () => clearTimeout(id);
+    return () => {
+      clearTimeout(id);
+      runId.current += 1;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

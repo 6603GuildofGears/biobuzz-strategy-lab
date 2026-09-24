@@ -23,7 +23,7 @@ import {
   type Pt,
   type Rect,
 } from "./field";
-import { freeSpot, inflatedObstacles, insideRect, pathLength, planPath } from "./nav";
+import { cheapPath, freeSpot, inflatedObstacles, insideRect, pathLength, planPath } from "./nav";
 import { mulberry32, type Rng } from "./rng";
 import type {
   Alliance,
@@ -184,6 +184,7 @@ const halfFt = (inches: number) => Math.min(18, Math.max(6, inches)) / 24;
 
 export function simulateMatch(input: MatchInput): MatchResult {
   const { settings } = input;
+  const dt = input.record ? 0.1 : 0.2;
   const rng: Rng = mulberry32(input.seed);
   const events: MatchEvent[] = [];
   const frames: Frame[] = [];
@@ -715,7 +716,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
       const need = travel(r, spot) + alignOf(r) + launchable * r.profile.launchTime + 0.5;
       const reserve = !inAuto() && r.role.park ? travel(r, r.park) + 1.5 : 0;
       const pickCost = pick ? pick.d / topSpeed(r) + r.profile.intakeTime : Infinity;
-      if (r.held.length >= r.cap || !pick || pick.d > 4.5 || timeLeft() - reserve < need + pickCost + 0.5) {
+      const ballIsRightThere = pick !== null && pick.d < 2.6;
+      if (!ballIsRightThere || r.held.length >= r.cap || timeLeft() - reserve < need + pickCost + 0.5) {
         goLaunch(r, ammo);
         return;
       }
@@ -775,7 +777,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
     if (!wantsPark) return false;
     // Real driving is slower than the straight-line estimate once robots have to
     // route around the HIVE and each other, so leave a few seconds early.
-    return timeLeft() <= travel(r, r.park) * 1.2 + (inAuto() ? 1 : 4.5);
+    return timeLeft() <= travel(r, r.park) * 1.15 + (inAuto() ? 1 : 2.6);
   };
 
   // ---------- DRIVING ----------
@@ -791,8 +793,9 @@ export function simulateMatch(input: MatchInput): MatchResult {
 
   /** Set the robot's commanded velocity toward `goal`, routing around obstacles and other robots. */
   const drive = (r: Robot, goal: Pt, tol: number) => {
-    if (!r.pathGoal || dist(r.pathGoal, goal) > 1 || t - r.pathAt > 1.2) {
-      r.path = planPath(r, goal, r.hw, r.hl, r.obs);
+    const replanEvery = input.record ? 1.2 : 2.5;
+    if (!r.pathGoal || dist(r.pathGoal, goal) > 1.2 || t - r.pathAt > replanEvery) {
+      r.path = input.record ? planPath(r, goal, r.hw, r.hl, r.obs) : cheapPath(r, goal, r.obs);
       r.pathGoal = goal;
       r.pathAt = t;
     }
@@ -844,8 +847,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
     if (r.mode === "defend") return;
     const actual = Math.hypot(r.vx, r.vy);
     if (r.mode === "park") {
-      if (speed > 0.6 && actual < 0.35 * Math.min(speed, vmax)) r.stuckT += DT;
-      else r.stuckT = Math.max(0, r.stuckT - DT);
+      if (speed > 0.6 && actual < 0.35 * Math.min(speed, vmax)) r.stuckT += dt;
+      else r.stuckT = Math.max(0, r.stuckT - dt);
       if (r.stuckT > 0.45 && !r.detour) {
         const side = rng() < 0.5 ? -1 : 1;
         r.detour = {
@@ -857,14 +860,19 @@ export function simulateMatch(input: MatchInput): MatchResult {
       }
       return;
     }
-    if (speed > 0.8 && actual < 0.3 * Math.min(speed, vmax)) r.stuckT += DT;
-    else r.stuckT = Math.max(0, r.stuckT - DT * 0.5);
+    if (speed > 0.8 && actual < 0.3 * Math.min(speed, vmax)) r.stuckT += dt;
+    else r.stuckT = Math.max(0, r.stuckT - dt * 0.5);
     if (r.stuckT > 0.8 && !r.detour) {
       const side = rng() < 0.5 ? -1 : 1;
       const p = freeSpot({ x: r.x - dy * side * 1.5 - dx * 0.4, y: r.y + dx * side * 1.5 - dy * 0.4 }, r.hw, r.hl, r.obs);
       r.detour = { p, until: t + 1.2 };
     }
-    if (r.stuckT > 3) giveUp(r);
+    if (r.stuckT > 3) {
+      if (r.mode === "launch" || r.mode === "flower" || r.mode === "pickup") {
+        r.stuckT = 0;
+        r.pathAt = -Infinity;
+      } else giveUp(r);
+    }
   };
 
   const step = (r: Robot) => {
@@ -873,6 +881,13 @@ export function simulateMatch(input: MatchInput): MatchResult {
     if (parkDue(r)) {
       releaseClaims(r);
       goPark(r);
+    }
+    if (r.mode === "launch" && r.task?.to && !canShoot(r, resolve(r.task.to))) {
+      const spot = launchSpot(r);
+      if (canShoot(r, spot)) {
+        r.task.to = spot;
+        r.pathAt = -Infinity;
+      }
     }
     if (!r.task) decide(r);
     for (let guard = 0; guard < 6 && r.task; guard++) {
@@ -911,7 +926,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
   const moveRobots = () => {
     for (const r of robots) {
       const speeding = r.cmdx * r.vx + r.cmdy * r.vy >= r.vx * r.vx + r.vy * r.vy;
-      const a = accelOf(r) * DT * (speeding ? 1 : 0.6);
+      const a = accelOf(r) * dt * (speeding ? 1 : 0.6);
       let ax = r.cmdx - r.vx;
       let ay = r.cmdy - r.vy;
       const m = Math.hypot(ax, ay);
@@ -921,8 +936,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
       }
       r.vx += ax;
       r.vy += ay;
-      r.x += r.vx * DT;
-      r.y += r.vy * DT;
+      r.x += r.vx * dt;
+      r.y += r.vy * dt;
     }
   };
 
@@ -1024,14 +1039,14 @@ export function simulateMatch(input: MatchInput): MatchResult {
     return (b.y = y1), [0, 1];
   };
 
-  const moveBalls = () => {
+  const moveBalls = (collideBalls: boolean) => {
     for (const b of floor) {
       const br = BALL_R[b.k];
       const airborne = b.z > 0 || b.vz !== 0;
       const moving = airborne || b.vx !== 0 || b.vy !== 0;
       if (airborne) {
-        b.vz -= GRAVITY * DT;
-        b.z += b.vz * DT;
+        b.vz -= GRAVITY * dt;
+        b.z += b.vz * dt;
         if (b.z <= 0) {
           b.z = 0;
           if (b.vz < -6) {
@@ -1046,22 +1061,22 @@ export function simulateMatch(input: MatchInput): MatchResult {
         }
       }
       if (moving) {
-        b.x += b.vx * DT;
-        b.y += b.vy * DT;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
       }
       if (b.z <= 0 && b.vz === 0) {
         if (insideRect(b, HIVE_BASE)) {
           const ex = b.x < 6 ? -(b.x - HIVE_BASE.x0) : HIVE_BASE.x1 - b.x;
           const ey = b.y < 6 ? -(b.y - HIVE_BASE.y0) : HIVE_BASE.y1 - b.y;
-          if (Math.abs(ex) < Math.abs(ey)) b.vx += Math.sign(ex) * HIVE_ROLL_OUT * DT;
-          else b.vy += Math.sign(ey) * HIVE_ROLL_OUT * DT;
+          if (Math.abs(ex) < Math.abs(ey)) b.vx += Math.sign(ex) * HIVE_ROLL_OUT * dt;
+          else b.vy += Math.sign(ey) * HIVE_ROLL_OUT * dt;
           if (Math.hypot(b.vx, b.vy) < 0.6) {
             if (Math.abs(ex) < Math.abs(ey)) b.vx = Math.sign(ex) * 0.6;
             else b.vy = Math.sign(ey) * 0.6;
           }
         } else if (moving) {
           const sp = Math.hypot(b.vx, b.vy);
-          const ns = sp - settings.ballFriction * DT;
+          const ns = sp - settings.ballFriction * dt;
           if (ns <= 0.05) {
             b.vx = 0;
             b.vy = 0;
@@ -1097,6 +1112,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
         bounceWall(b, br);
       }
     }
+    if (!collideBalls) return;
     for (let i = 0; i < floor.length; i++) {
       for (let j = i + 1; j < floor.length; j++) {
         const a = floor[i];
@@ -1188,12 +1204,13 @@ export function simulateMatch(input: MatchInput): MatchResult {
   };
 
   // ---------- MAIN LOOP ----------
-  const steps = Math.round(MATCH_LENGTH / DT);
+  const steps = Math.round(MATCH_LENGTH / dt);
   let autoClosed = false;
   let flowersOpened = false;
   let lastFrame = -Infinity;
+  let physStep = 0;
   for (let s = 0; s <= steps; s++) {
-    t = s * DT;
+    t = s * dt;
 
     for (let i = scheduled.length - 1; i >= 0; i--) {
       if (scheduled[i].at <= t + 1e-9) {
@@ -1236,7 +1253,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
           if (rectGap(d, target) < 0.35 && target.mode !== "parked") {
             const leverage = Math.min(1.5, Math.max(0.5, d.push / target.push));
             target.slow = Math.min(0.9, Math.max(target.slow, settings.defenseEffect * leverage));
-            if (rng() < (settings.defenseFoulRate / 60) * DT) {
+            if (rng() < (settings.defenseFoulRate / 60) * dt) {
               foulCredit[target.alliance] += 20;
               log(d.alliance, "MAJOR FOUL on defense (+20 to opponent)");
             }
@@ -1267,7 +1284,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
     }
 
     landShots();
-    moveBalls();
+    moveBalls(input.record || physStep % 3 === 0);
+    physStep++;
 
     if (input.record && t - lastFrame >= FRAME_DT - 1e-9) {
       record();

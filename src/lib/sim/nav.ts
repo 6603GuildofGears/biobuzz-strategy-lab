@@ -102,6 +102,34 @@ export function planPath(from: Pt, to: Pt, hw: number, hl: number, obs: Rect[]):
   return path;
 }
 
+/** One-corner route around the first obstacle. Used by the showdown, where full path search is too slow. */
+export function cheapPath(from: Pt, to: Pt, obs: Rect[]): Pt[] {
+  let hit: Rect | null = null;
+  for (const r of obs) {
+    if (segHitsRect(from, to, r)) {
+      hit = r;
+      break;
+    }
+  }
+  if (!hit) return [to];
+  const corners = [
+    { x: hit.x0 - 0.05, y: hit.y0 - 0.05 },
+    { x: hit.x1 + 0.05, y: hit.y0 - 0.05 },
+    { x: hit.x1 + 0.05, y: hit.y1 + 0.05 },
+    { x: hit.x0 - 0.05, y: hit.y1 + 0.05 },
+  ];
+  let best = corners[0];
+  let bestLen = Infinity;
+  for (const c of corners) {
+    const len = dist(from, c) + dist(c, to);
+    if (len < bestLen) {
+      bestLen = len;
+      best = c;
+    }
+  }
+  return [best, to];
+}
+
 /** Cheap path-length estimate for planning decisions (one corner detour at most). */
 export function pathLength(from: Pt, to: Pt, obs: Rect[]): number {
   const direct = dist(from, to);
