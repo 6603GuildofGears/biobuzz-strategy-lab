@@ -42,17 +42,20 @@ export const HIVE_CELL_OFFSET = 0.78;
 /** Robots can't launch from under the frame. */
 export const MIN_LAUNCH_DIST = 2.4;
 
+export type HiveEnd = "north" | "south";
+
 /**
- * Shots only enter through the north and south ends of the HIVE.
- * South faces the audience (smaller y). North faces the rear wall (larger y).
- * Each alliance uses its own half of those ends.
+ * The upward CELL faces only one end. Even flips face north (rear wall);
+ * odd flips face south (audience). A shot from the other end rolls out.
  */
-export const aimsAtHiveFront = (a: Alliance, from: Pt) => {
+export const openHiveEnd = (flips: number): HiveEnd => (flips % 2 === 0 ? "north" : "south");
+
+/** True when a shot from `from` enters the open end of this alliance's HIVE. */
+export const aimsAtHiveFront = (a: Alliance, from: Pt, end: HiveEnd) => {
   const cell = HIVE_POS[a];
-  const south = from.y < HIVE_BASE.y0 - 0.15;
-  const north = from.y > HIVE_BASE.y1 + 0.15;
-  if (!south && !north) return false;
-  const faceY = south ? HIVE_BASE.y0 : HIVE_BASE.y1;
+  const faceY = end === "south" ? HIVE_BASE.y0 : HIVE_BASE.y1;
+  const outside = end === "south" ? from.y < faceY - 0.15 : from.y > faceY + 0.15;
+  if (!outside) return false;
   const dy = cell.y - from.y;
   if (Math.abs(dy) < 1e-6) return false;
   const t = (faceY - from.y) / dy;

@@ -13,6 +13,7 @@ import {
   MIN_LAUNCH_DIST,
   aimsAtHiveFront,
   effectiveLaunchRange,
+  openHiveEnd,
   TELEOP_START,
   dist,
   flowerService,
@@ -85,6 +86,8 @@ interface Shot {
   z1: number;
   t0: number;
   t1: number;
+  /** Which end was open when the shot was fired. */
+  end: "north" | "south";
 }
 
 interface FlowerState {
@@ -493,7 +496,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
     const d = dist(p, HIVE_POS[r.alliance]);
     if (d < MIN_LAUNCH_DIST || d > shotRange(r)) return false;
     if (inAuto() && (r.alliance === "red" ? p.x > 6 - r.hw : p.x < 6 + r.hw)) return false;
-    return aimsAtHiveFront(r.alliance, p);
+    return aimsAtHiveFront(r.alliance, p, openHiveEnd(hives[r.alliance].flips));
   };
 
   /** Pick a legal spot in front of the HIVE that is quickest to reach and not on a teammate. */
@@ -506,8 +509,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
     if (canShoot(r, r)) return { x: r.x, y: r.y };
     let best: Pt | null = null;
     let bestCost = Infinity;
-    for (const sign of [-1, 1]) {
-      for (let i = 0; i < 8; i++) {
+    const sign = openHiveEnd(hives[r.alliance].flips) === "north" ? 1 : -1;
+    for (let i = 0; i < 8; i++) {
         const rad = MIN_LAUNCH_DIST + 0.2 + ((range - MIN_LAUNCH_DIST - 0.2) * i) / 7;
         for (let j = -3; j <= 3; j++) {
           const spot = { x: h.x + j * 0.4, y: h.y + sign * rad };
@@ -518,9 +521,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
             best = spot;
           }
         }
-      }
     }
-    const fallbackY = r.y < h.y ? h.y - (MIN_LAUNCH_DIST + 0.35) : h.y + (MIN_LAUNCH_DIST + 0.35);
+    const fallbackY = h.y + sign * (MIN_LAUNCH_DIST + 0.35);
     return best ?? freeSpot({ x: h.x, y: fallbackY }, r.hw, r.hl, r.obs);
   };
 
@@ -557,6 +559,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
         z1: settings.cellHeight,
         t0: t,
         t1: t + flight,
+        end: openHiveEnd(hives[r.alliance].flips),
       });
       if (r.held.some(eligible)) setTask(r, "launch", { dur: r.profile.launchTime, then: fire });
     };
@@ -886,7 +889,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
   // ---------- PHYSICS ----------
   const moveRobots = () => {
     for (const r of robots) {
-      const a = accelOf(r) * DT;
+      const speeding = r.cmdx * r.vx + r.cmdy * r.vy >= r.vx * r.vx + r.vy * r.vy;
+      const a = accelOf(r) * DT * (speeding ? 1 : 0.6);
       let ax = r.cmdx - r.vx;
       let ay = r.cmdy - r.vy;
       const m = Math.hypot(ax, ay);
@@ -972,7 +976,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
       const s = shots[i];
       if (s.t1 > t + 1e-9) continue;
       shots.splice(i, 1);
-      if (s.hit && hives[s.alliance].tipUntil <= t) addToCell(s.alliance, s.k);
+      const stillOpen = openHiveEnd(hives[s.alliance].flips) === s.end && hives[s.alliance].tipUntil <= t;
+      if (s.hit && stillOpen) addToCell(s.alliance, s.k);
       else bounceOff(s.k, s.alliance, s.from);
     }
   };

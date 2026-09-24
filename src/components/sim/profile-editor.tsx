@@ -84,7 +84,7 @@ export function ProfileEditor({
         </p>
         <SliderRow
           label="Acceleration"
-          hint="How quickly the robot gets up to speed and stops. Low acceleration means long drives cost more than the top speed suggests."
+          hint="How quickly the robot gets up to speed. Slowing down and turning take longer than speeding up, because of the robot's momentum."
           value={profile.acceleration}
           min={2}
           max={20}

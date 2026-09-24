@@ -73,12 +73,13 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
         stroke="#6b7280"
         strokeWidth={0.05}
       />
-      {([HIVE_BASE.y0, HIVE_BASE.y1] as const).map((y) => (
-        <g key={y}>
-          <line x1={HIVE_BASE.x0} y1={Y(y)} x2={6} y2={Y(y)} stroke={COLORS.red} strokeWidth={0.12} />
-          <line x1={6} y1={Y(y)} x2={HIVE_BASE.x1} y2={Y(y)} stroke={COLORS.blue} strokeWidth={0.12} />
-        </g>
-      ))}
+      {(["red", "blue"] as Alliance[]).map((a) => {
+        const north = (frame?.hiveFlip[a] ?? 0) % 2 === 0;
+        const y = north ? HIVE_BASE.y1 : HIVE_BASE.y0;
+        const x0 = a === "red" ? HIVE_BASE.x0 : 6;
+        const x1 = a === "red" ? 6 : HIVE_BASE.x1;
+        return <line key={a} x1={x0} y1={Y(y)} x2={x1} y2={Y(y)} stroke={COLORS[a]} strokeWidth={0.14} />;
+      })}
       {(["red", "blue"] as Alliance[]).map((a) => {
         const h = HIVE_POS[a];
         const flip = frame ? frame.hiveFlip[a] % 2 : 0;
