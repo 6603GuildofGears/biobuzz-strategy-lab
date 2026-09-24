@@ -102,15 +102,16 @@ export function MatchViewer({
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <Card>
         <CardHeader className="gap-3">
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
             <StrategyPick label="Red alliance" color="red" value={redId} onChange={setRedId} strategies={strategies} />
             <StrategyPick label="Blue alliance" color="blue" value={blueId} onChange={setBlueId} strategies={strategies} />
-            <div className="flex gap-2">
-              <Button onClick={() => run()}>
+            <div className="col-span-2 flex gap-2">
+              <Button className="max-sm:h-10 max-sm:flex-1" onClick={() => run()}>
                 <RotateCcw /> Run match
               </Button>
               <Button
                 variant="outline"
+                className="max-sm:h-10 max-sm:flex-1"
                 onClick={() => {
                   const s = Math.floor(Math.random() * 1e6);
                   setSeed(s);
@@ -126,9 +127,9 @@ export function MatchViewer({
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-stretch gap-3">
+          <div className="flex items-stretch gap-2 sm:gap-3">
             <ScoreBox color="red" name={red.name} score={frame?.score.red ?? 0} final={done ? result?.red.total : undefined} />
-            <div className="flex min-w-28 flex-col items-center justify-center rounded-lg border bg-muted/40 px-3">
+            <div className="flex shrink-0 flex-col items-center justify-center rounded-lg border bg-muted/40 px-2 sm:min-w-28 sm:px-3">
               <span
                 className={cn(
                   "text-[10px] font-semibold tracking-widest",
@@ -137,7 +138,7 @@ export function MatchViewer({
               >
                 {c.phase}
               </span>
-              <span className="font-mono text-2xl font-bold tabular-nums">{mmss(c.left)}</span>
+              <span className="font-mono text-xl font-bold tabular-nums sm:text-2xl">{mmss(c.left)}</span>
             </div>
             <ScoreBox color="blue" name={blue.name} score={frame?.score.blue ?? 0} final={done ? result?.blue.total : undefined} />
           </div>
@@ -146,12 +147,12 @@ export function MatchViewer({
             <FieldView frame={frame} robotLabels={["1", "2", "1", "2"]} />
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button size="icon" variant="outline" onClick={() => (done ? (setFrameIdx(0), setPlaying(true)) : setPlaying((p) => !p))} aria-label={playing ? "Pause" : "Play"}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button size="icon" variant="outline" className="max-sm:size-10" onClick={() => (done ? (setFrameIdx(0), setPlaying(true)) : setPlaying((p) => !p))} aria-label={playing ? "Pause" : "Play"}>
               {playing ? <Pause /> : <Play />}
             </Button>
             <Slider
-              className="flex-1"
+              className="min-w-0 flex-1 py-2"
               value={[frameIdx]}
               min={0}
               max={Math.max(1, frames.length - 1)}
@@ -161,9 +162,9 @@ export function MatchViewer({
                 setFrameIdx(Array.isArray(v) ? v[0] : (v as number));
               }}
             />
-            <div className="flex gap-1">
+            <div className="flex gap-1 max-sm:w-full max-sm:justify-center">
               {SPEEDS.map((s) => (
-                <Button key={s} size="sm" variant={speed === s ? "default" : "ghost"} className="h-7 px-2 text-xs" onClick={() => setSpeed(s)}>
+                <Button key={s} size="sm" variant={speed === s ? "default" : "ghost"} className="h-7 px-2 text-xs max-sm:h-9 max-sm:flex-1" onClick={() => setSpeed(s)}>
                   {s}×
                 </Button>
               ))}
@@ -254,10 +255,10 @@ function StrategyPick({
   strategies: Strategy[];
 }) {
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <span className={cn("text-xs font-medium", color === "red" ? "text-red-500" : "text-blue-500")}>{label}</span>
       <Select value={value} onValueChange={(v) => v && onChange(v)}>
-        <SelectTrigger className="w-56">
+        <SelectTrigger className="w-full sm:w-56">
           <SelectValue>{(v: string) => strategies.find((s) => s.id === v)?.name ?? v}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -276,13 +277,13 @@ function ScoreBox({ color, name, score, final }: { color: "red" | "blue"; name: 
   return (
     <div
       className={cn(
-        "flex flex-1 flex-col justify-center rounded-lg px-4 py-2 text-white",
+        "flex min-w-0 flex-1 flex-col justify-center rounded-lg px-3 py-2 text-white sm:px-4",
         color === "red" ? "bg-red-600" : "bg-blue-600",
-        color === "blue" && "items-end",
+        color === "blue" && "items-end text-right",
       )}
     >
-      <span className="truncate text-xs opacity-80">{name}</span>
-      <span className="font-mono text-3xl font-bold tabular-nums">{final ?? score}</span>
+      <span className="w-full truncate text-xs opacity-80">{name}</span>
+      <span className="font-mono text-2xl font-bold tabular-nums sm:text-3xl">{final ?? score}</span>
       {final !== undefined && <Badge variant="secondary" className="mt-0.5 h-4 px-1.5 text-[10px]">final</Badge>}
     </div>
   );

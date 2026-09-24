@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 const STEPS = [
   {
     title: "Describe your robots",
-    body: "In the left panel, open Robot 1 and Robot 2 and set how fast and accurate each robot is. Start with a preset (Rookie, Average, Elite) and then fine-tune it. Both alliances use these same robots, so every result comes down to strategy, not hardware.",
+    body: "Open the robot settings (the left panel on a computer, the Robots tab on a phone). Go to Robot 1 and Robot 2 and set how fast and accurate each robot is. Start with a preset (Rookie, Average, Elite) and then fine-tune it. Both alliances use these same robots, so every result comes down to strategy, not hardware.",
   },
   {
     title: "Check the game assumptions",
@@ -61,7 +61,7 @@ const LIMITS = [
   "Field positions (FLOWERS, LOADING ZONES, GARDENS) are approximated from the manual figures, not taken from official CAD.",
   "Robots follow simple, consistent decision rules. Real drivers adapt, make mistakes, and sometimes break down.",
   "Fouls only come from defense. Other penalties aren't modeled.",
-  "See the Rules & assumptions tab for exactly what comes from the manual and what is an estimate.",
+  "See Rules & assumptions for exactly what comes from the manual and what is an estimate.",
 ];
 
 export function Guide() {

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { runTournament, type TournamentResult } from "@/lib/sim/tournament";
 import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
 
 const MATCH_OPTIONS = [20, 50, 100, 200];
@@ -41,6 +42,7 @@ export function Showdown({
   const [result, setResult] = useState<{ res: TournamentResult; version: number; strategies: Strategy[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const runId = useRef(0);
+  const isMobile = useIsMobile();
 
   const selected = strategies.filter((s) => enabled.has(s.id));
 
@@ -135,7 +137,7 @@ export function Showdown({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={run} disabled={running || selected.length < 2}>
+            <Button onClick={run} disabled={running || selected.length < 2} className="max-sm:h-10 max-sm:w-full">
               {running ? <Loader2 className="animate-spin" /> : <Play />}
               {running ? "Simulating…" : `Run ${selected.length * selected.length * perPair} matches`}
             </Button>
@@ -188,31 +190,31 @@ export function Showdown({
                     <TableHead>#</TableHead>
                     <TableHead>Strategy</TableHead>
                     <TableHead className="text-right">Win %</TableHead>
-                    <TableHead className="text-right">Avg score</TableHead>
+                    <TableHead className="hidden text-right sm:table-cell">Avg score</TableHead>
                     <TableHead className="text-right">Margin</TableHead>
-                    <TableHead className="text-right">± SD</TableHead>
-                    <TableHead className="text-right">Tips</TableHead>
-                    <TableHead className="text-right">FLOWER pts</TableHead>
+                    <TableHead className="hidden text-right md:table-cell">± SD</TableHead>
+                    <TableHead className="hidden text-right sm:table-cell">Tips</TableHead>
+                    <TableHead className="hidden text-right md:table-cell">FLOWER pts</TableHead>
                     <TableHead className="text-right">RP</TableHead>
-                    <TableHead className="text-right">4+ / 7+ tips</TableHead>
+                    <TableHead className="hidden text-right md:table-cell">4+ / 7+ tips</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {ranked.map((s, i) => (
                     <TableRow key={s.id}>
                       <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell className="font-medium whitespace-normal">{s.name}</TableCell>
                       <TableCell className="text-right tabular-nums">{pct((s.wins + s.ties * 0.5) / s.matches)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{s.avgScore.toFixed(1)}</TableCell>
+                      <TableCell className="hidden text-right tabular-nums sm:table-cell">{s.avgScore.toFixed(1)}</TableCell>
                       <TableCell className={cn("text-right tabular-nums", s.avgMargin >= 0 ? "text-emerald-600" : "text-rose-600")}>
                         {s.avgMargin >= 0 ? "+" : ""}
                         {s.avgMargin.toFixed(1)}
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground tabular-nums">{s.scoreStdDev.toFixed(0)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{s.avgTips.toFixed(1)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{(s.breakdown.flowerBottom + s.breakdown.flowerOwned).toFixed(1)}</TableCell>
+                      <TableCell className="hidden text-right text-muted-foreground tabular-nums md:table-cell">{s.scoreStdDev.toFixed(0)}</TableCell>
+                      <TableCell className="hidden text-right tabular-nums sm:table-cell">{s.avgTips.toFixed(1)}</TableCell>
+                      <TableCell className="hidden text-right tabular-nums md:table-cell">{(s.breakdown.flowerBottom + s.breakdown.flowerOwned).toFixed(1)}</TableCell>
                       <TableCell className="text-right tabular-nums">{s.avgRP.toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground tabular-nums">
+                      <TableCell className="hidden text-right text-muted-foreground tabular-nums md:table-cell">
                         {pct(s.p1Rate)} / {pct(s.p2Rate)}
                       </TableCell>
                     </TableRow>
@@ -229,12 +231,12 @@ export function Showdown({
                 <CardDescription>Average points per match by source.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[340px]">
+                <div className="h-[340px] max-sm:-mx-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 12 }}>
+                    <BarChart data={chartData} layout="vertical" margin={isMobile ? { left: 0, right: 8 } : { left: 12, right: 12 }}>
                       <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.4} />
                       <XAxis type="number" fontSize={11} />
-                      <YAxis type="category" dataKey="name" width={150} fontSize={11} />
+                      <YAxis type="category" dataKey="name" width={isMobile ? 96 : 150} fontSize={isMobile ? 10 : 11} />
                       <Tooltip contentStyle={{ fontSize: 12 }} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       {SERIES.map((s) => (
@@ -249,10 +251,12 @@ export function Showdown({
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Head to head</CardTitle>
-                <CardDescription>Win rate of the row strategy against the column strategy (average margin underneath).</CardDescription>
+                <CardDescription>
+                  Win rate of the row strategy against the column strategy{isMobile ? "." : " (average margin underneath)."}
+                </CardDescription>
               </CardHeader>
               <CardContent className="overflow-x-auto">
-                <HeadToHead result={result.res} strategies={result.strategies} />
+                <HeadToHead result={result.res} strategies={result.strategies} compact={isMobile} />
               </CardContent>
             </Card>
           </div>
@@ -279,58 +283,69 @@ function Highlight({ icon, label, value, detail }: { icon?: React.ReactNode; lab
   );
 }
 
-function HeadToHead({ result, strategies }: { result: TournamentResult; strategies: Strategy[] }) {
+function HeadToHead({ result, strategies, compact }: { result: TournamentResult; strategies: Strategy[]; compact?: boolean }) {
   const color = (w: number) => {
     const hue = w >= 0.5 ? 152 : 350;
     const a = Math.min(1, Math.abs(w - 0.5) * 2);
     return `hsla(${hue}, 70%, 45%, ${0.12 + a * 0.75})`;
   };
   return (
-    <table className="w-full border-separate border-spacing-1 text-xs">
-      <thead>
-        <tr>
-          <th />
-          {strategies.map((s, j) => (
-            <th key={s.id} className="px-1 text-center font-medium text-muted-foreground" title={s.name}>
-              {j + 1}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {strategies.map((s, i) => (
-          <tr key={s.id}>
-            <th className="pr-2 text-left font-medium whitespace-nowrap">
-              <span className="mr-1 text-muted-foreground">{i + 1}.</span>
-              {s.name}
-            </th>
-            {strategies.map((o, j) => {
-              const w = result.matrix[i][j];
-              const m = result.marginMatrix[i][j];
-              return (
-                <td
-                  key={o.id}
-                  className="min-w-12 rounded px-1 py-1.5 text-center tabular-nums"
-                  style={{ background: i === j ? "transparent" : color(w) }}
-                  title={`${s.name} vs ${o.name}: ${pct(w)} win, ${m >= 0 ? "+" : ""}${m.toFixed(1)} pts`}
-                >
-                  {i === j ? (
-                    <span className="text-muted-foreground">—</span>
-                  ) : (
-                    <>
-                      <div className="font-semibold">{pct(w)}</div>
-                      <div className="text-[10px] opacity-80">
-                        {m >= 0 ? "+" : ""}
-                        {m.toFixed(0)}
-                      </div>
-                    </>
-                  )}
-                </td>
-              );
-            })}
+    <div>
+      <table className={cn("w-full border-separate text-xs", compact ? "border-spacing-0.5 text-[11px]" : "border-spacing-1")}>
+        <thead>
+          <tr>
+            <th />
+            {strategies.map((s, j) => (
+              <th key={s.id} className="px-1 text-center font-medium text-muted-foreground" title={s.name}>
+                {j + 1}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {strategies.map((s, i) => (
+            <tr key={s.id}>
+              <th className="pr-2 text-left font-medium whitespace-nowrap">
+                <span className="mr-1 text-muted-foreground">{i + 1}.</span>
+                {!compact && s.name}
+              </th>
+              {strategies.map((o, j) => {
+                const w = result.matrix[i][j];
+                const m = result.marginMatrix[i][j];
+                return (
+                  <td
+                    key={o.id}
+                    className={cn("rounded text-center tabular-nums", compact ? "px-0.5 py-2" : "min-w-12 px-1 py-1.5")}
+                    style={{ background: i === j ? "transparent" : color(w) }}
+                    title={`${s.name} vs ${o.name}: ${pct(w)} win, ${m >= 0 ? "+" : ""}${m.toFixed(1)} pts`}
+                  >
+                    {i === j ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <>
+                        <div className="font-semibold">{pct(w)}</div>
+                        <div className={cn("text-[10px] opacity-80", compact && "hidden")}>
+                          {m >= 0 ? "+" : ""}
+                          {m.toFixed(0)}
+                        </div>
+                      </>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {compact && (
+        <ol className="mt-3 grid gap-1 text-xs text-muted-foreground">
+          {strategies.map((s, i) => (
+            <li key={s.id}>
+              <span className="font-medium text-foreground">{i + 1}.</span> {s.name}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
   );
 }
