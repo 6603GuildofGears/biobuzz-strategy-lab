@@ -254,7 +254,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
       const hw = halfFt(prof.widthIn);
       const hl = halfFt(prof.lengthIn);
       const cap = Math.max(1, Math.min(4, Math.round(prof.capacity)));
-      const p = startPos(a, slot, hw);
+      const p = startPos(a, slot, hl);
       robots.push({
         idx: robots.length,
         alliance: a,
@@ -265,9 +265,9 @@ export function simulateMatch(input: MatchInput): MatchResult {
         hl,
         cap,
         push: Math.max(5, prof.weightLb) * TRACTION[prof.drivetrain],
-        obs: inflatedObstacles(hw, hl),
+        obs: inflatedObstacles(Math.max(hw, hl), Math.max(hw, hl)),
         start: p,
-        park: parkSpot(a, slot, hw, hl, halfFt(mate.lengthIn)),
+        park: parkSpot(a, slot, hl, hw, halfFt(mate.widthIn)),
         service: FLOWERS.map((_, fi) => flowerService(fi, hl)),
         x: p.x,
         y: p.y,
@@ -310,10 +310,20 @@ export function simulateMatch(input: MatchInput): MatchResult {
   };
   const durScale = (r: Robot) => 1 / Math.max(0.2, speedFactor(r));
   const alignOf = (r: Robot) => r.profile.alignTime + DRIVETRAIN_ALIGN[r.profile.drivetrain];
-  const inZone = (r: Robot, z: Rect) =>
-    r.x >= z.x0 - r.hw && r.x <= z.x1 + r.hw && r.y >= z.y0 - r.hl && r.y <= z.y1 + r.hl;
-  const rectGap = (a: Robot, b: Robot) =>
-    Math.max(Math.abs(a.x - b.x) - a.hw - b.hw, Math.abs(a.y - b.y) - a.hl - b.hl, 0);
+  /** Length runs front to back, so the field box swaps when the robot turns. */
+  const foot = (r: Robot) => {
+    const alongX = Math.abs(Math.cos(r.heading)) >= Math.abs(Math.sin(r.heading));
+    return alongX ? { x: r.hl, y: r.hw } : { x: r.hw, y: r.hl };
+  };
+  const inZone = (r: Robot, z: Rect) => {
+    const e = foot(r);
+    return r.x >= z.x0 - e.x && r.x <= z.x1 + e.x && r.y >= z.y0 - e.y && r.y <= z.y1 + e.y;
+  };
+  const rectGap = (a: Robot, b: Robot) => {
+    const ea = foot(a);
+    const eb = foot(b);
+    return Math.max(Math.abs(a.x - b.x) - ea.x - eb.x, Math.abs(a.y - b.y) - ea.y - eb.y, 0);
+  };
 
   // ---------- HIVE ----------
   const tip = (a: Alliance) => {
@@ -966,8 +976,10 @@ export function simulateMatch(input: MatchInput): MatchResult {
         for (let j = i + 1; j < robots.length; j++) {
           const a = robots[i];
           const b = robots[j];
-          const ox = a.hw + b.hw - Math.abs(b.x - a.x);
-          const oy = a.hl + b.hl - Math.abs(b.y - a.y);
+          const ea = foot(a);
+          const eb = foot(b);
+          const ox = ea.x + eb.x - Math.abs(b.x - a.x);
+          const oy = ea.y + eb.y - Math.abs(b.y - a.y);
           if (ox <= 0 || oy <= 0) continue;
           const pa = a.mode === "parked" ? a.push * 40 : a.push;
           const pb = b.mode === "parked" ? b.push * 40 : b.push;
@@ -995,17 +1007,17 @@ export function simulateMatch(input: MatchInput): MatchResult {
         }
       }
       for (const r of robots) {
-        for (const o of OBSTACLE_CACHE.get(r)!) pushOutOf(r, o);
-        if (r.x < r.hw) (r.x = r.hw), (r.vx = Math.max(0, r.vx));
-        if (r.x > FIELD - r.hw) (r.x = FIELD - r.hw), (r.vx = Math.min(0, r.vx));
-        if (r.y < r.hl) (r.y = r.hl), (r.vy = Math.max(0, r.vy));
-        if (r.y > FIELD - r.hl) (r.y = FIELD - r.hl), (r.vy = Math.min(0, r.vy));
+        const e = foot(r);
+        for (const o of [HIVE_BASE, ...FLOWER_BLOCKS]) {
+          pushOutOf(r, { x0: o.x0 - e.x, y0: o.y0 - e.y, x1: o.x1 + e.x, y1: o.y1 + e.y });
+        }
+        if (r.x < e.x) (r.x = e.x), (r.vx = Math.max(0, r.vx));
+        if (r.x > FIELD - e.x) (r.x = FIELD - e.x), (r.vx = Math.min(0, r.vx));
+        if (r.y < e.y) (r.y = e.y), (r.vy = Math.max(0, r.vy));
+        if (r.y > FIELD - e.y) (r.y = FIELD - e.y), (r.vy = Math.min(0, r.vy));
       }
     }
   };
-  const OBSTACLE_CACHE = new Map<Robot, Rect[]>(
-    robots.map((r) => [r, [HIVE_BASE, ...FLOWER_BLOCKS].map((o) => ({ x0: o.x0 - r.hw, y0: o.y0 - r.hl, x1: o.x1 + r.hw, y1: o.y1 + r.hl }))]),
-  );
 
   const landShots = () => {
     for (let i = shots.length - 1; i >= 0; i--) {
@@ -1098,7 +1110,8 @@ export function simulateMatch(input: MatchInput): MatchResult {
       if (b.z < BUMPER_HEIGHT) {
         for (const r of robots) {
           if (b.claimedBy === r.idx && r.mode === "pickup") continue;
-          const n = boxOut(b, r.x - r.hw - br, r.y - r.hl - br, r.x + r.hw + br, r.y + r.hl + br);
+          const e = foot(r);
+          const n = boxOut(b, r.x - e.x - br, r.y - e.y - br, r.x + e.x + br, r.y + e.y + br);
           if (!n) continue;
           // Bulldozed: the element picks up the robot's speed along the contact normal.
           if (n[0] !== 0) {

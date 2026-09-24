@@ -115,8 +115,8 @@ export const flowerService = (fi: number, hl: number): Pt => {
 };
 
 const START_Y = [3.5, 7.25];
-export const startPos = (a: Alliance, slot: 0 | 1, hw: number): Pt => {
-  const p = { x: hw + 0.01, y: START_Y[slot] };
+export const startPos = (a: Alliance, slot: 0 | 1, lengthHalf: number): Pt => {
+  const p = { x: lengthHalf + 0.01, y: START_Y[slot] };
   return a === "red" ? p : rotate(p);
 };
 
@@ -124,9 +124,9 @@ export const startPos = (a: Alliance, slot: 0 | 1, hw: number): Pt => {
  * Parking spots in the LOADING ZONE corner. Slot 0 tucks into the corner and slot 1
  * lines up just outside it, far enough away that the two robots don't overlap.
  */
-export const parkSpot = (a: Alliance, slot: 0 | 1, hw: number, hl: number, mateHl: number): Pt => {
-  const y0 = FIELD - hl - 0.05;
-  const p = { x: hw + 0.05, y: slot === 0 ? y0 : y0 - mateHl - hl - 0.3 };
+export const parkSpot = (a: Alliance, slot: 0 | 1, lengthHalf: number, widthHalf: number, mateWidthHalf: number): Pt => {
+  const y0 = FIELD - widthHalf - 0.05;
+  const p = { x: lengthHalf + 0.05, y: slot === 0 ? y0 : y0 - mateWidthHalf - widthHalf - 0.3 };
   return a === "red" ? p : rotate(p);
 };
 

@@ -146,17 +146,17 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
         return (
           <g key={i} transform={`translate(${r.x} ${Y(r.y)}) rotate(${((-r.heading * 180) / Math.PI).toFixed(1)})`}>
             <rect
-              x={-r.hw}
-              y={-r.hl}
-              width={r.hw * 2}
-              height={r.hl * 2}
+              x={-r.hl}
+              y={-r.hw}
+              width={r.hl * 2}
+              height={r.hw * 2}
               rx={0.12}
               fill={COLORS[a]}
               fillOpacity={r.mode === "dead" ? 0.3 : 0.9}
               stroke={r.mode === "parked" ? "#fde047" : "white"}
               strokeWidth={r.mode === "parked" ? 0.1 : 0.05}
             />
-            <polygon points={`${r.hw},0 ${r.hw - 0.22},${0.16 * scale} ${r.hw - 0.22},${-0.16 * scale}`} fill="white" />
+            <polygon points={`${r.hl},0 ${r.hl - 0.22},${0.16 * scale} ${r.hl - 0.22},${-0.16 * scale}`} fill="white" />
             <text y={-0.1 * scale} textAnchor="middle" fontSize={0.42 * scale} fontWeight={700} fill="white">
               {robotLabels[i]}
             </text>
