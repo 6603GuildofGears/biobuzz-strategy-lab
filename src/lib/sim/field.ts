@@ -43,25 +43,24 @@ export const HIVE_CELL_OFFSET = 0.78;
 export const MIN_LAUNCH_DIST = 2.4;
 
 /**
- * The HIVE only accepts shots through the face that points at that alliance.
- * Red's opening faces the red wall (smaller x); blue's faces the blue wall.
+ * Shots only enter through the north and south ends of the HIVE.
+ * South faces the audience (smaller y). North faces the rear wall (larger y).
+ * Each alliance uses its own half of those ends.
  */
-export const hiveFront = (a: Alliance) =>
-  a === "red"
-    ? { x: HIVE_BASE.x0, y0: HIVE_BASE.y0, y1: HIVE_BASE.y1, outward: -1 as const }
-    : { x: HIVE_BASE.x1, y0: HIVE_BASE.y0, y1: HIVE_BASE.y1, outward: 1 as const };
-
-/** True when a shot from `from` passes through that alliance's front opening. */
 export const aimsAtHiveFront = (a: Alliance, from: Pt) => {
-  const face = hiveFront(a);
   const cell = HIVE_POS[a];
-  if ((from.x - face.x) * face.outward <= 0.2) return false;
-  const dx = cell.x - from.x;
-  if (Math.abs(dx) < 1e-6) return false;
-  const t = (face.x - from.x) / dx;
+  const south = from.y < HIVE_BASE.y0 - 0.15;
+  const north = from.y > HIVE_BASE.y1 + 0.15;
+  if (!south && !north) return false;
+  const faceY = south ? HIVE_BASE.y0 : HIVE_BASE.y1;
+  const dy = cell.y - from.y;
+  if (Math.abs(dy) < 1e-6) return false;
+  const t = (faceY - from.y) / dy;
   if (t <= 0 || t >= 1) return false;
-  const yHit = from.y + t * (cell.y - from.y);
-  return yHit >= face.y0 + 0.05 && yHit <= face.y1 - 0.05;
+  const xHit = from.x + t * (cell.x - from.x);
+  const x0 = a === "red" ? HIVE_BASE.x0 + 0.08 : 6;
+  const x1 = a === "red" ? 6 : HIVE_BASE.x1 - 0.08;
+  return xHit >= x0 && xHit <= x1;
 };
 
 /**

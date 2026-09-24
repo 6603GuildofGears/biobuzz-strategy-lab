@@ -72,9 +72,16 @@ export function ProfileEditor({
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Tank pushes hardest but takes longer to line up. Mecanum and swerve strafe, so they lose less time aiming.
+            Tank pushes hardest but takes longer to line up and to spin. Mecanum and swerve strafe, so they lose less time aiming.
           </p>
         </div>
+        <div className="flex items-center justify-between gap-3">
+          <Label className="text-xs font-medium text-muted-foreground">Intake on the front</Label>
+          <Switch checked={profile.frontIntake} onCheckedChange={(v) => set("frontIntake", v)} />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          The nose mark is the intake. With a front intake the shooter faces the back, so the robot has to spin around before it can shoot. A tank drive takes longer to turn than mecanum or swerve.
+        </p>
         <SliderRow
           label="Acceleration"
           hint="How quickly the robot gets up to speed and stops. Low acceleration means long drives cost more than the top speed suggests."

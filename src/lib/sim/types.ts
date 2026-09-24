@@ -42,6 +42,8 @@ export interface RobotProfile {
   capacity: number;
   /** Launcher exit speed in ft/s. Faster shots spend less time in the air. */
   shotSpeed: number;
+  /** Intake is on the front and the shooter is on the back, so the robot must turn around before each volley. */
+  frontIntake: boolean;
 }
 
 export type Drivetrain = "mecanum" | "tank" | "swerve";
@@ -125,6 +127,8 @@ export interface RobotFrame {
   hl: number;
   held: Kind[];
   mode: string;
+  /** Radians, 0 faces +x. The nose mark is the intake. */
+  heading: number;
 }
 
 export interface Frame {

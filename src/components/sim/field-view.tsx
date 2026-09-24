@@ -73,8 +73,12 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
         stroke="#6b7280"
         strokeWidth={0.05}
       />
-      <line x1={HIVE_BASE.x0} y1={Y(HIVE_BASE.y0)} x2={HIVE_BASE.x0} y2={Y(HIVE_BASE.y1)} stroke={COLORS.red} strokeWidth={0.12} />
-      <line x1={HIVE_BASE.x1} y1={Y(HIVE_BASE.y0)} x2={HIVE_BASE.x1} y2={Y(HIVE_BASE.y1)} stroke={COLORS.blue} strokeWidth={0.12} />
+      {([HIVE_BASE.y0, HIVE_BASE.y1] as const).map((y) => (
+        <g key={y}>
+          <line x1={HIVE_BASE.x0} y1={Y(y)} x2={6} y2={Y(y)} stroke={COLORS.red} strokeWidth={0.12} />
+          <line x1={6} y1={Y(y)} x2={HIVE_BASE.x1} y2={Y(y)} stroke={COLORS.blue} strokeWidth={0.12} />
+        </g>
+      ))}
       {(["red", "blue"] as Alliance[]).map((a) => {
         const h = HIVE_POS[a];
         const flip = frame ? frame.hiveFlip[a] % 2 : 0;
@@ -139,7 +143,7 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
         const a: Alliance = i < 2 ? "red" : "blue";
         const scale = Math.min(1, Math.min(r.hw, r.hl) / 0.75);
         return (
-          <g key={i} transform={`translate(${r.x} ${Y(r.y)})`}>
+          <g key={i} transform={`translate(${r.x} ${Y(r.y)}) rotate(${((-r.heading * 180) / Math.PI).toFixed(1)})`}>
             <rect
               x={-r.hw}
               y={-r.hl}
@@ -151,6 +155,7 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
               stroke={r.mode === "parked" ? "#fde047" : "white"}
               strokeWidth={r.mode === "parked" ? 0.1 : 0.05}
             />
+            <polygon points={`${r.hw},0 ${r.hw - 0.22},${0.16 * scale} ${r.hw - 0.22},${-0.16 * scale}`} fill="white" />
             <text y={-0.1 * scale} textAnchor="middle" fontSize={0.42 * scale} fontWeight={700} fill="white">
               {robotLabels[i]}
             </text>

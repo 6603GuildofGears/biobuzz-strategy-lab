@@ -47,7 +47,8 @@ const SLIDERS: { name: string; means: string }[] = [
   { name: "Intake time", means: "Time to grab one element once you reach it, including chasing balls that roll away." },
   { name: "Launch time", means: "Time between shots when emptying your robot into the HIVE." },
   { name: "Align / aim per trip", means: "Time lost every trip lining up to shoot or to use a FLOWER." },
-  { name: "Launch range", means: "How far the launcher is built to throw. The robot still has to shoot from in front of its HIVE, and a low shot speed shortens the distance that actually goes in." },
+  { name: "Launch range", means: "How far the launcher is built to throw. The robot still has to shoot from the north or south end of the HIVE, and a low shot speed shortens the distance that actually goes in." },
+  { name: "Intake on the front", means: "The intake is the nose and the shooter is the back. The robot spends time spinning around before it shoots. Turn that off only if your shooter and intake face the same way." },
   { name: "Accuracy sliders", means: "Chance a shot or FLOWER placement goes in. Misses bounce back onto the field, where anyone can pick them up." },
   { name: "AUTO sliders", means: "How often AUTO works at all, how fast it runs compared with TELEOP, and whether it ends parked." },
 ];

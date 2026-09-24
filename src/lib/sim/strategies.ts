@@ -112,6 +112,7 @@ export const PRESETS: Record<string, RobotProfile> = {
     acceleration: 5,
     capacity: 3,
     shotSpeed: 14,
+    frontIntake: true,
   },
   Average: {
     driveSpeed: 4.5,
@@ -133,6 +134,7 @@ export const PRESETS: Record<string, RobotProfile> = {
     acceleration: 8,
     capacity: 4,
     shotSpeed: 20,
+    frontIntake: true,
   },
   Elite: {
     driveSpeed: 6,
@@ -154,6 +156,7 @@ export const PRESETS: Record<string, RobotProfile> = {
     acceleration: 12,
     capacity: 4,
     shotSpeed: 26,
+    frontIntake: true,
   },
 };
 

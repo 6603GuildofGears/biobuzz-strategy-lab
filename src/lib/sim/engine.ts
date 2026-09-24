@@ -54,6 +54,8 @@ export const BALL_R: Record<Kind, number> = { P: 0.117, R: 0.15, B: 0.15 };
 export const TRACTION: Record<Drivetrain, number> = { mecanum: 0.7, tank: 1, swerve: 0.9 };
 /** Extra lining-up time per trip: a tank drive has to turn instead of strafing. */
 const DRIVETRAIN_ALIGN: Record<Drivetrain, number> = { mecanum: 0, tank: 0.35, swerve: 0 };
+/** Seconds to spin a front intake around so the shooter faces the HIVE. */
+const SPIN_TIME: Record<Drivetrain, number> = { mecanum: 0.7, swerve: 0.45, tank: 1.15 };
 
 const ownNectar = (a: Alliance): Kind => (a === "red" ? "R" : "B");
 const opp = (a: Alliance): Alliance => (a === "red" ? "blue" : "red");
@@ -147,6 +149,7 @@ interface Robot {
   pathAt: number;
   stuckT: number;
   detour: { p: Pt; until: number } | null;
+  heading: number;
   held: Kind[];
   mode: Mode;
   task: Task | null;
@@ -273,6 +276,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
         pathAt: -Infinity,
         stuckT: 0,
         detour: null,
+        heading: a === "red" ? 0 : Math.PI,
         held: Array.from({ length: cap }, () => "P" as Kind),
         mode: "idle",
         task: null,
@@ -502,20 +506,22 @@ export function simulateMatch(input: MatchInput): MatchResult {
     if (canShoot(r, r)) return { x: r.x, y: r.y };
     let best: Pt | null = null;
     let bestCost = Infinity;
-    const sign = r.alliance === "red" ? -1 : 1;
-    for (let i = 0; i < 9; i++) {
-      const rad = MIN_LAUNCH_DIST + 0.15 + ((range - MIN_LAUNCH_DIST - 0.15) * i) / 8;
-      for (let j = -6; j <= 6; j++) {
-        const spot = { x: h.x + sign * rad, y: h.y + j * 0.45 };
-        if (!validSpot(r, spot) || !canShoot(r, spot)) continue;
-        const cost = pathLength(r, spot, r.obs) + (clearOfMate(spot) ? 0 : 3);
-        if (cost < bestCost) {
-          bestCost = cost;
-          best = spot;
+    for (const sign of [-1, 1]) {
+      for (let i = 0; i < 8; i++) {
+        const rad = MIN_LAUNCH_DIST + 0.2 + ((range - MIN_LAUNCH_DIST - 0.2) * i) / 7;
+        for (let j = -3; j <= 3; j++) {
+          const spot = { x: h.x + j * 0.4, y: h.y + sign * rad };
+          if (!validSpot(r, spot) || !canShoot(r, spot)) continue;
+          const cost = pathLength(r, spot, r.obs) + (clearOfMate(spot) ? 0 : 3);
+          if (cost < bestCost) {
+            bestCost = cost;
+            best = spot;
+          }
         }
       }
     }
-    return best ?? freeSpot({ x: h.x + sign * (MIN_LAUNCH_DIST + 0.3), y: h.y }, r.hw, r.hl, r.obs);
+    const fallbackY = r.y < h.y ? h.y - (MIN_LAUNCH_DIST + 0.35) : h.y + (MIN_LAUNCH_DIST + 0.35);
+    return best ?? freeSpot({ x: h.x, y: fallbackY }, r.hw, r.hl, r.obs);
   };
 
   const goLaunch = (r: Robot, ammo: RoleConfig["ammo"]) => {
@@ -557,7 +563,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
     setTask(r, "launch", {
       to: launchSpot(r),
       reach: 0.2,
-      dur: alignOf(r) + r.profile.launchTime,
+      dur: alignOf(r) + (r.profile.frontIntake ? SPIN_TIME[r.profile.drivetrain] : 0) + r.profile.launchTime,
       then: fire,
     });
   };
@@ -1119,7 +1125,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
     });
     frames.push({
       t,
-      robots: robots.map((r) => ({ x: r.x, y: r.y, hw: r.hw, hl: r.hl, held: [...r.held], mode: r.mode })),
+      robots: robots.map((r) => ({ x: r.x, y: r.y, hw: r.hw, hl: r.hl, held: [...r.held], mode: r.mode, heading: r.heading })),
       floor: [...floor.map((e) => ({ x: e.x, y: e.y, z: Math.max(0, e.z), k: e.k })), ...air],
       cells: { red: [...hives.red.cell], blue: [...hives.blue.cell] },
       hiveFlip: { red: hives.red.flips, blue: hives.blue.flips },
@@ -1195,6 +1201,16 @@ export function simulateMatch(input: MatchInput): MatchResult {
     collideRobots();
     if (inAuto()) {
       for (const r of robots) if (!r.left && dist(r, r.start) > 0.3) r.left = true;
+    }
+    for (const r of robots) {
+      const moving = Math.hypot(r.vx, r.vy) > 0.2;
+      if (r.mode === "launch") {
+        const h = HIVE_POS[r.alliance];
+        const sign = r.profile.frontIntake ? -1 : 1;
+        r.heading = Math.atan2((h.y - r.y) * sign, (h.x - r.x) * sign);
+      } else if (moving) {
+        r.heading = Math.atan2(r.vy, r.vx);
+      }
     }
 
     landShots();
