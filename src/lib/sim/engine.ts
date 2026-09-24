@@ -353,14 +353,16 @@ export function simulateMatch(input: MatchInput): MatchResult {
     const outward = north ? 1 : -1;
     const x0 = a === "red" ? HIVE_BASE.x0 + 0.35 : 6.1;
     const x1 = a === "red" ? 5.9 : HIVE_BASE.x1 - 0.35;
-    const lip = Math.max(0.4, settings.cellHeight * 0.4);
+    const lip = Math.max(1.2, settings.cellHeight * (0.75 + rng() * 0.3));
+    const outwardSpeed = 7 + rng() * 6;
+    const sideSpeed = (rng() - 0.5) * 8;
     spawn(
       k,
-      { x: x0 + rng() * (x1 - x0), y: faceY + outward * (0.2 + rng() * 0.15) },
-      lip * (0.55 + rng() * 0.45),
-      (rng() - 0.5) * 1.6,
-      outward * (2.4 + rng() * 2.2),
-      -(1.2 + rng() * 2),
+      { x: x0 + rng() * (x1 - x0), y: faceY + outward * (0.25 + rng() * 0.2) },
+      lip,
+      sideSpeed,
+      outward * outwardSpeed,
+      -(2 + rng() * 4),
     );
   };
 
