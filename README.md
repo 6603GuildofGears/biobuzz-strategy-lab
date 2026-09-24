@@ -45,12 +45,18 @@ The app runs entirely in the browser, so it builds to plain static files (HTML, 
 
 ### Custom domain (biobuzz-strategy-lab.com)
 
-`public/CNAME` holds the domain name. To make it live:
+The site stays on GitHub Pages. A domain bought at Wix only needs its DNS pointed at GitHub. Wix cannot change name servers; edit the records in the Wix account instead.
 
-1. Buy `biobuzz-strategy-lab.com` from any domain registrar.
-2. In the registrar's DNS settings, add four `A` records for `@` pointing to `185.199.108.153`, `185.199.109.153`, `185.199.110.153` and `185.199.111.153`. Also add a `CNAME` record for `www` pointing to `<your-username>.github.io`.
-3. In the GitHub repo, go to **Settings → Pages**, enter `biobuzz-strategy-lab.com` under **Custom domain**, save, and tick **Enforce HTTPS** once it's available.
-4. Rerun the deploy workflow. With a custom domain the site is served from `/`, and the workflow adjusts the links automatically.
+`public/CNAME` already contains `biobuzz-strategy-lab.com`.
+
+1. In Wix, open **Domains**, click the domain actions icon next to `biobuzz-strategy-lab.com`, and choose **Manage DNS Records**. If the domain is assigned to a Wix site, disconnect that site first so Wix does not overwrite the records.
+2. Delete the existing root `A` records (they currently point at Wix, `185.230.63.x`). Add four `A` records with a blank host name:
+   - `185.199.108.153`
+   - `185.199.109.153`
+   - `185.199.110.153`
+   - `185.199.111.153`
+3. Edit the `www` `CNAME`. Change the value from `initial.wixdns.net` to `6603guildofgears.github.io` (no `https://`).
+4. After those records show up in a DNS lookup, set **Settings → Pages → Custom domain** to `biobuzz-strategy-lab.com` and rerun the deploy workflow. The workflow then serves the site from `/`. Turn on **Enforce HTTPS** after GitHub finishes the certificate (often about an hour). Leave any mail records (`MX`, `TXT`) alone.
 
 To build the static files yourself, run `npm run build`. The output goes to `out/`, and you can upload that folder to any static host.
 
