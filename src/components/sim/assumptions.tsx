@@ -16,7 +16,7 @@ const FROM_MANUAL = [
 
 const ASSUMPTIONS = [
   "Field positions (FLOWERS on the audience and rear walls, LOADING ZONES and GARDENS in opposite corners) are approximated from the manual figures, not taken from CAD.",
-  "HIVE weight model: POLLEN = 1, NECTAR = 1.67 (slider), tip threshold 7.5 ± 0.35 (slider). A tipped CELL spins for about a second, then the elements fall from the CELL and bounce and roll across the tiles.",
+  "HIVE weight model: POLLEN = 1, NECTAR = 1.67 (slider), tip threshold 7.5 ± 0.35 (slider). A tipped CELL spins for about a second, then the balls fall out of that opening, bounce, bump into each other, and roll away from the hive.",
   "The upward CELL faces only one end of the HIVE. It starts facing north (the rear wall) and switches to the south end (the audience) every time the HIVE tips. A shot from the closed end rolls back out. Effective range is the shorter of the launcher's range and what its shot speed can carry. Longer shots inside that range are less accurate. A robot with a front intake must spin around before each volley, because the shooter faces the back. A miss bounces off the HIVE and rolls away.",
   "Robots can't drive through each other, the HIVE frame, or the FLOWERS. Contact pushes both robots apart, and the heavier drivetrain wins more of that push. Elements on the floor get bulldozed instead of driven over.",
   "Defense is that contact plus a slowdown while a defender is against you, and a random chance of MAJOR FOULS.",

@@ -319,6 +319,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
     const h = hives[a];
     h.tips++;
     if (t < TELEOP_START) h.autoTips++;
+    const spilled = openHiveEnd(h.flips);
     h.flips++;
     const contents = h.cell;
     h.cell = [];
@@ -327,7 +328,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
     h.tipUntil = t + settings.tipSpinTime + 0.3;
     log(a, `HIVE TIP #${h.tips} (+20)`);
     contents.forEach((k, i) => {
-      schedule(settings.tipSpinTime + i * 0.06, () => toss(k, jitter(HIVE_POS[a], 0.4), settings.cellHeight, 0.8, 2.5));
+      schedule(settings.tipSpinTime + i * 0.09, () => spillOut(k, a, spilled));
     });
     if (areaNectar[a] > 0 && t < FLOWER_UNLOCK) {
       areaNectar[a]--;
@@ -343,6 +344,24 @@ export function simulateMatch(input: MatchInput): MatchResult {
     h.cell.push(k);
     h.weight += weightOf(k);
     if (h.weight >= h.threshold) tip(a);
+  };
+
+  /** Balls leave through the opening that just tipped, then roll away from it. */
+  const spillOut = (k: Kind, a: Alliance, end: "north" | "south") => {
+    const north = end === "north";
+    const faceY = north ? HIVE_BASE.y1 : HIVE_BASE.y0;
+    const outward = north ? 1 : -1;
+    const x0 = a === "red" ? HIVE_BASE.x0 + 0.35 : 6.1;
+    const x1 = a === "red" ? 5.9 : HIVE_BASE.x1 - 0.35;
+    const lip = Math.max(0.4, settings.cellHeight * 0.4);
+    spawn(
+      k,
+      { x: x0 + rng() * (x1 - x0), y: faceY + outward * (0.2 + rng() * 0.15) },
+      lip * (0.55 + rng() * 0.45),
+      (rng() - 0.5) * 1.6,
+      outward * (2.4 + rng() * 2.2),
+      -(1.2 + rng() * 2),
+    );
   };
 
   /** A shot that bounced off the HIVE and fell back to the tiles. */
@@ -1074,6 +1093,33 @@ export function simulateMatch(input: MatchInput): MatchResult {
           }
         }
         bounceWall(b, br);
+      }
+    }
+    for (let i = 0; i < floor.length; i++) {
+      for (let j = i + 1; j < floor.length; j++) {
+        const a = floor[i];
+        const b = floor[j];
+        if (a.z > 0.45 || b.z > 0.45) continue;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const min = BALL_R[a.k] + BALL_R[b.k];
+        const d = Math.hypot(dx, dy);
+        if (d >= min || d < 1e-4) continue;
+        const nx = dx / d;
+        const ny = dy / d;
+        const overlap = (min - d) * 0.5;
+        a.x -= nx * overlap;
+        a.y -= ny * overlap;
+        b.x += nx * overlap;
+        b.y += ny * overlap;
+        const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        if (rel < 0) {
+          const impulse = rel * 0.65;
+          a.vx += impulse * nx;
+          a.vy += impulse * ny;
+          b.vx -= impulse * nx;
+          b.vy -= impulse * ny;
+        }
       }
     }
   };
