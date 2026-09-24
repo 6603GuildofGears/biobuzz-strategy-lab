@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpen, ChartBar, Copy, Hexagon, Layers, PlayCircle, SlidersHorizontal } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +19,29 @@ import { StrategyLibrary } from "./strategy-library";
 /** "robots" only exists on phones, where the settings panel gets its own screen. */
 type View = "showdown" | "match" | "robots" | "strategies" | "rules" | "guide";
 
+/** Shareable paths. The home page stays `/` and still opens the showdown. */
+const VIEW_PATH: Record<View, string> = {
+  showdown: "/results",
+  match: "/match",
+  robots: "/robots",
+  strategies: "/strategies",
+  rules: "/rules",
+  guide: "/guide",
+};
+
+export function viewFromPath(pathname: string): View {
+  const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
+  const path = pathname.replace(/\/$/, "") || "/";
+  const local = base && path.startsWith(base) ? path.slice(base.length) || "/" : path;
+  const match = (Object.entries(VIEW_PATH) as [View, string][]).find(([, href]) => href === local);
+  return match?.[0] ?? "showdown";
+}
+
+function pathFor(view: View) {
+  const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
+  return `${base}${VIEW_PATH[view]}/`;
+}
+
 const MOBILE_NAV: { view: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: "showdown", label: "Results", icon: ChartBar },
   { view: "match", label: "Match", icon: PlayCircle },
@@ -27,12 +50,12 @@ const MOBILE_NAV: { view: View; label: string; icon: React.ComponentType<{ class
   { view: "guide", label: "Guide", icon: BookOpen },
 ];
 
-export function Simulator() {
+export function Simulator({ initialView = "showdown" }: { initialView?: View }) {
   const [profiles, setProfiles] = useState<[RobotProfile, RobotProfile]>([{ ...PRESETS.Average }, { ...PRESETS.Average }]);
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [custom, setCustom] = useState<Strategy>(defaultCustom);
   const [version, setVersion] = useState(0);
-  const [tab, setTab] = useState<View>("showdown");
+  const [tab, setTab] = useState<View>(initialView);
   const isMobile = useIsMobile();
 
   const view: View = !isMobile && tab === "robots" ? "showdown" : tab;
@@ -52,8 +75,18 @@ export function Simulator() {
 
   const go = (v: View) => {
     setTab(v);
+    const next = pathFor(v);
+    if (window.location.pathname !== next) {
+      window.history.pushState({ view: v }, "", next);
+    }
     if (isMobile) window.scrollTo({ top: 0 });
   };
+
+  useEffect(() => {
+    const onPop = () => setTab(viewFromPath(window.location.pathname));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   return (
     <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 px-3 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-4 lg:gap-6 lg:px-8 lg:py-6">

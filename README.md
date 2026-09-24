@@ -35,6 +35,12 @@ For a quick check from the command line (it prints one match log and a small tou
 npm run smoke -- Average   # or Rookie / Elite
 ```
 
+These addresses open a section directly. The home page is unchanged.
+
+- https://biobuzz-strategy-lab.com/match
+- https://biobuzz-strategy-lab.com/results
+- https://biobuzz-strategy-lab.com/robots
+
 ## Hosting on GitHub Pages
 
 The app runs entirely in the browser, so it builds to plain static files (HTML, JavaScript, CSS) that GitHub Pages can serve.
