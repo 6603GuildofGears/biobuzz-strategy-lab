@@ -41,13 +41,13 @@ const OUTPUTS: { name: string; means: string }[] = [
 const SLIDERS: { name: string; means: string }[] = [
   { name: "Width, length, weight", means: "Your robot's real frame size and weight. Size changes how you fit around the HIVE and in the LOADING ZONE. Weight decides who shoves whom in a collision." },
   { name: "Drivetrain", means: "Tank pushes harder but loses time turning. Mecanum and swerve can strafe, so lining up is quicker." },
-  { name: "Acceleration and shot speed", means: "Acceleration is how fast you reach top speed. Shot speed is how fast a ball leaves the robot, which sets how long it hangs in the air." },
+  { name: "Acceleration and shot speed", means: "Acceleration is how fast you reach top speed. Shot speed is how fast a ball leaves the robot. It sets hang time and how far a shot can still reach the HIVE." },
   { name: "Carry capacity", means: "How many elements you can hold, up to the 4-element limit in G407." },
   { name: "Drive speed", means: "Top speed in a straight line. Acceleration is separate, under Robot specs." },
   { name: "Intake time", means: "Time to grab one element once you reach it, including chasing balls that roll away." },
   { name: "Launch time", means: "Time between shots when emptying your robot into the HIVE." },
   { name: "Align / aim per trip", means: "Time lost every trip lining up to shoot or to use a FLOWER." },
-  { name: "Launch range", means: "How far from the HIVE you can shoot. Longer range means less driving each cycle." },
+  { name: "Launch range", means: "How far the launcher is built to throw. The robot still has to shoot from in front of its HIVE, and a low shot speed shortens the distance that actually goes in." },
   { name: "Accuracy sliders", means: "Chance a shot or FLOWER placement goes in. Misses bounce back onto the field, where anyone can pick them up." },
   { name: "AUTO sliders", means: "How often AUTO works at all, how fast it runs compared with TELEOP, and whether it ends parked." },
 ];

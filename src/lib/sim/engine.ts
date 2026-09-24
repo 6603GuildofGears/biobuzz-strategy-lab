@@ -11,6 +11,8 @@ import {
   LZ_DROP,
   MATCH_LENGTH,
   MIN_LAUNCH_DIST,
+  aimsAtHiveFront,
+  effectiveLaunchRange,
   TELEOP_START,
   dist,
   flowerService,
@@ -479,33 +481,41 @@ export function simulateMatch(input: MatchInput): MatchResult {
   const validSpot = (r: Robot, p: Pt) =>
     p.x >= r.hw && p.x <= FIELD - r.hw && p.y >= r.hl && p.y <= FIELD - r.hl && !r.obs.some((o) => insideRect(p, o));
 
-  /** Pick a legal spot in launch range that is quickest to reach and not on a teammate. */
+  const shotRange = (r: Robot) =>
+    Math.max(MIN_LAUNCH_DIST + 0.15, effectiveLaunchRange(r.profile.launchRange, r.profile.shotSpeed));
+
+  /** In front of this alliance's HIVE opening, inside effective range, and on its own half in AUTO. */
+  const canShoot = (r: Robot, p: Pt) => {
+    const d = dist(p, HIVE_POS[r.alliance]);
+    if (d < MIN_LAUNCH_DIST || d > shotRange(r)) return false;
+    if (inAuto() && (r.alliance === "red" ? p.x > 6 - r.hw : p.x < 6 + r.hw)) return false;
+    return aimsAtHiveFront(r.alliance, p);
+  };
+
+  /** Pick a legal spot in front of the HIVE that is quickest to reach and not on a teammate. */
   const launchSpot = (r: Robot): Pt => {
     const h = HIVE_POS[r.alliance];
-    const d = dist(r, h);
-    const range = Math.max(MIN_LAUNCH_DIST + 0.3, r.profile.launchRange);
+    const range = shotRange(r);
     const mate = robots.find((o) => o.alliance === r.alliance && o !== r);
-    const clearOfMate = (p: Pt) => !mate || Math.abs(p.x - mate.x) > r.hw + mate.hw + 0.1 || Math.abs(p.y - mate.y) > r.hl + mate.hl + 0.1;
-    const auto = inAuto();
-    const ownHalf = (p: Pt) => !auto || (r.alliance === "red" ? p.x <= 6 - r.hw : p.x >= 6 + r.hw);
-    if (d >= MIN_LAUNCH_DIST && d <= range && ownHalf(r)) return { x: r.x, y: r.y };
-    const radii = [Math.min(range - 0.2, Math.max(MIN_LAUNCH_DIST + 0.2, d)), range - 0.2, MIN_LAUNCH_DIST + 0.2];
+    const clearOfMate = (p: Pt) =>
+      !mate || Math.abs(p.x - mate.x) > r.hw + mate.hw + 0.1 || Math.abs(p.y - mate.y) > r.hl + mate.hl + 0.1;
+    if (canShoot(r, r)) return { x: r.x, y: r.y };
     let best: Pt | null = null;
     let bestCost = Infinity;
-    for (const rad of radii) {
-      for (let i = 0; i < 24; i++) {
-        const ang = (i / 24) * Math.PI * 2;
-        const p = { x: h.x + Math.cos(ang) * rad, y: h.y + Math.sin(ang) * rad };
-        if (!validSpot(r, p) || !ownHalf(p)) continue;
-        const cost = pathLength(r, p, r.obs) + (clearOfMate(p) ? 0 : 3);
+    const sign = r.alliance === "red" ? -1 : 1;
+    for (let i = 0; i < 9; i++) {
+      const rad = MIN_LAUNCH_DIST + 0.15 + ((range - MIN_LAUNCH_DIST - 0.15) * i) / 8;
+      for (let j = -6; j <= 6; j++) {
+        const spot = { x: h.x + sign * rad, y: h.y + j * 0.45 };
+        if (!validSpot(r, spot) || !canShoot(r, spot)) continue;
+        const cost = pathLength(r, spot, r.obs) + (clearOfMate(spot) ? 0 : 3);
         if (cost < bestCost) {
           bestCost = cost;
-          best = p;
+          best = spot;
         }
       }
-      if (best) break;
     }
-    return best ?? freeSpot(approach(r, h, MIN_LAUNCH_DIST + 0.2), r.hw, r.hl, r.obs);
+    return best ?? freeSpot({ x: h.x + sign * (MIN_LAUNCH_DIST + 0.3), y: h.y }, r.hw, r.hl, r.obs);
   };
 
   const goLaunch = (r: Robot, ammo: RoleConfig["ammo"]) => {
@@ -518,10 +528,17 @@ export function simulateMatch(input: MatchInput): MatchResult {
         setTask(r, "launch", { dur: h.tipUntil - t, then: fire });
         return;
       }
+      if (!canShoot(r, r)) {
+        goLaunch(r, ammo);
+        return;
+      }
       const k = r.held.splice(i, 1)[0];
-      const acc = k === "P" ? r.profile.pollenAccuracy : r.profile.nectarAccuracy;
       const to = HIVE_POS[r.alliance];
       const d = dist(r, to);
+      const range = shotRange(r);
+      const span = Math.max(0.4, range - MIN_LAUNCH_DIST);
+      const falloff = Math.max(0, 1 - 0.55 * ((d - MIN_LAUNCH_DIST) / span));
+      const acc = (k === "P" ? r.profile.pollenAccuracy : r.profile.nectarAccuracy) * falloff;
       const flight = Math.max(0.25, d / (0.72 * Math.max(4, r.profile.shotSpeed)));
       shots.push({
         k,

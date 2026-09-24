@@ -97,7 +97,7 @@ export function ProfileEditor({
         />
         <SliderRow
           label="Shot speed"
-          hint="How fast a launched element leaves the robot. Faster shots spend less time in the air before they land in the HIVE or bounce back."
+          hint="How fast a launched element leaves the robot. Faster shots fly less time and can reach the HIVE from farther away. A slow shot cannot score from the back of the field."
           value={profile.shotSpeed}
           min={8}
           max={40}
@@ -159,7 +159,7 @@ export function ProfileEditor({
         />
         <SliderRow
           label="Launch range"
-          hint="Farthest distance from its HIVE the robot can shoot from. Longer range = less driving."
+          hint="How far this launcher is built to throw. Shot speed can cut that shorter. Shots only go in from in front of your HIVE opening."
           value={profile.launchRange}
           min={2.5}
           max={10}

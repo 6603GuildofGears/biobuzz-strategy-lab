@@ -42,6 +42,36 @@ export const HIVE_CELL_OFFSET = 0.78;
 /** Robots can't launch from under the frame. */
 export const MIN_LAUNCH_DIST = 2.4;
 
+/**
+ * The HIVE only accepts shots through the face that points at that alliance.
+ * Red's opening faces the red wall (smaller x); blue's faces the blue wall.
+ */
+export const hiveFront = (a: Alliance) =>
+  a === "red"
+    ? { x: HIVE_BASE.x0, y0: HIVE_BASE.y0, y1: HIVE_BASE.y1, outward: -1 as const }
+    : { x: HIVE_BASE.x1, y0: HIVE_BASE.y0, y1: HIVE_BASE.y1, outward: 1 as const };
+
+/** True when a shot from `from` passes through that alliance's front opening. */
+export const aimsAtHiveFront = (a: Alliance, from: Pt) => {
+  const face = hiveFront(a);
+  const cell = HIVE_POS[a];
+  if ((from.x - face.x) * face.outward <= 0.2) return false;
+  const dx = cell.x - from.x;
+  if (Math.abs(dx) < 1e-6) return false;
+  const t = (face.x - from.x) / dx;
+  if (t <= 0 || t >= 1) return false;
+  const yHit = from.y + t * (cell.y - from.y);
+  return yHit >= face.y0 + 0.05 && yHit <= face.y1 - 0.05;
+};
+
+/**
+ * How far a shot can still reach the CELL. The launcher's built range and the
+ * exit speed both apply, and the speed cap keeps a slow shot from scoring from
+ * the back of the field.
+ */
+export const effectiveLaunchRange = (launchRange: number, shotSpeed: number) =>
+  Math.min(Math.max(MIN_LAUNCH_DIST, launchRange), 1.5 + Math.max(0, shotSpeed) * 0.12);
+
 const RED_LZ: Rect = { x0: 0, y0: 12 - 23 / 12, x1: 11 / 12, y1: 12 };
 const RED_GARDEN: Rect = { x0: 0, y0: 0, x1: 23 / 12, y1: 2 / 12 };
 
