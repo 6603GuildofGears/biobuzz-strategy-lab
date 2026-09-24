@@ -28,7 +28,23 @@ export interface RobotProfile {
   autoSpeed: number;
   /** Whether AUTO ends by parking in the LOADING ZONE. */
   autoPark: boolean;
+  /** Frame width in inches (left-right). The starting size limit is 18 in. */
+  widthIn: number;
+  /** Frame length in inches (front-back). */
+  lengthIn: number;
+  /** Robot weight in pounds, used when robots push each other. */
+  weightLb: number;
+  /** Drivetrain type: sets traction for pushing and how much time it loses lining up. */
+  drivetrain: Drivetrain;
+  /** How fast the robot reaches top speed and brakes, in ft/s². */
+  acceleration: number;
+  /** How many elements the robot can hold at once (G407 caps this at 4). */
+  capacity: number;
+  /** Launcher exit speed in ft/s. Faster shots spend less time in the air. */
+  shotSpeed: number;
 }
+
+export type Drivetrain = "mecanum" | "tank" | "swerve";
 
 export type Ammo = "all" | "pollen";
 export type FlowerMode = "fill" | "cap";
@@ -68,6 +84,12 @@ export interface GameSettings {
   defenseEffect: number;
   /** Expected MAJOR FOULS per minute of defensive contact. */
   defenseFoulRate: number;
+  /** Seconds the HIVE takes to rotate before a tipped CELL empties. */
+  tipSpinTime: number;
+  /** Height (ft) elements fall from when a CELL empties. */
+  cellHeight: number;
+  /** How quickly rolling elements slow down on the tiles, in ft/s². */
+  ballFriction: number;
 }
 
 export interface ScoreBreakdown {
@@ -98,6 +120,9 @@ export interface MatchEvent {
 export interface RobotFrame {
   x: number;
   y: number;
+  /** Half width / half length in ft. */
+  hw: number;
+  hl: number;
   held: Kind[];
   mode: string;
 }
@@ -105,7 +130,8 @@ export interface RobotFrame {
 export interface Frame {
   t: number;
   robots: RobotFrame[];
-  floor: { x: number; y: number; k: Kind }[];
+  /** z is height above the tiles in ft (0 = on the floor). */
+  floor: { x: number; y: number; z: number; k: Kind }[];
   cells: Record<Alliance, Kind[]>;
   hiveFlip: Record<Alliance, number>;
   flowers: { stack: Kind[]; bottom: number }[];

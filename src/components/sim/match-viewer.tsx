@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { simulateMatch } from "@/lib/sim/engine";
+import { FRAME_DT, simulateMatch } from "@/lib/sim/engine";
 import { AUTO_END, FLOWER_UNLOCK, MATCH_LENGTH, TELEOP_START } from "@/lib/sim/field";
 import type { GameSettings, MatchResult, RobotProfile, ScoreBreakdown, Strategy } from "@/lib/sim/types";
 import { cn } from "@/lib/utils";
@@ -73,9 +73,9 @@ export function MatchViewer({
     const tick = (now: number) => {
       acc += ((now - last) / 1000) * speed;
       last = now;
-      const stepFrames = Math.floor(acc / 0.25);
+      const stepFrames = Math.floor(acc / FRAME_DT);
       if (stepFrames > 0) {
-        acc -= stepFrames * 0.25;
+        acc -= stepFrames * FRAME_DT;
         setFrameIdx((i) => {
           const n = Math.min(frames.length - 1, i + stepFrames);
           if (n >= frames.length - 1) setPlaying(false);

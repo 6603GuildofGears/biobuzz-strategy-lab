@@ -16,11 +16,12 @@ const FROM_MANUAL = [
 
 const ASSUMPTIONS = [
   "Field positions (FLOWERS on the audience and rear walls, LOADING ZONES and GARDENS in opposite corners) are approximated from the manual figures, not taken from CAD.",
-  "HIVE weight model: POLLEN = 1, NECTAR = 1.67 (slider), tip threshold 7.5 ± 0.35 (slider). A tipped CELL scatters its contents 1.5 to 6 ft from the HIVE.",
-  "Missed launches scatter around the HIVE. Missed FLOWER placements drop next to the FLOWER.",
+  "HIVE weight model: POLLEN = 1, NECTAR = 1.67 (slider), tip threshold 7.5 ± 0.35 (slider). A tipped CELL spins for about a second, then the elements fall from the CELL and bounce and roll across the tiles.",
+  "Launched elements take flight time based on distance and shot speed. A miss bounces off the HIVE and rolls away. A missed FLOWER placement drops beside the FLOWER and rolls.",
+  "Robots can't drive through each other, the HIVE frame, or the FLOWERS. Contact pushes both robots apart, and the heavier drivetrain wins more of that push. Elements on the floor get bulldozed instead of driven over.",
+  "Defense is that contact plus a slowdown while a defender is against you, and a random chance of MAJOR FOULS.",
   "FLOWER scoring volume holds 5 elements by default (slider). The 4 POLLEN staged in each FLOWER sit below the scoring volume and do not score.",
-  "Robots don't collide with each other. Defense works as a slowdown on whichever opponent the defender is shadowing, plus a random chance of MAJOR FOULS.",
-  "Robots drive in straight lines at a constant speed. The per-trip align time stands in for acceleration, turning, and lining up.",
+  "Drive speed is a top speed. Acceleration, robot size, and routing around obstacles decide how long a trip actually takes.",
 ];
 
 export function Assumptions() {

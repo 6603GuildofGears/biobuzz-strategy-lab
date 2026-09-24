@@ -4,10 +4,10 @@ import {
   FIELD,
   FLOWERS,
   GARDEN,
+  HIVE_BASE,
   HIVE_CELL_OFFSET,
   HIVE_POS,
   LOADING_ZONE,
-  ROBOT_HALF,
   type Rect,
 } from "@/lib/sim/field";
 import type { Alliance, Frame, Kind } from "@/lib/sim/types";
@@ -63,7 +63,16 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
         </g>
       ))}
 
-      <rect x={6 - 2.06} y={Y(6) - 1.62} width={4.12} height={3.24} fill="none" stroke="#4b5563" strokeWidth={0.05} strokeDasharray="0.2 0.12" />
+      <rect
+        x={HIVE_BASE.x0}
+        y={Y(HIVE_BASE.y1)}
+        width={HIVE_BASE.x1 - HIVE_BASE.x0}
+        height={HIVE_BASE.y1 - HIVE_BASE.y0}
+        fill="#4b5563"
+        fillOpacity={0.25}
+        stroke="#6b7280"
+        strokeWidth={0.05}
+      />
       {(["red", "blue"] as Alliance[]).map((a) => {
         const h = HIVE_POS[a];
         const flip = frame ? frame.hiveFlip[a] % 2 : 0;
@@ -118,34 +127,64 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
         );
       })}
 
-      {frame?.floor.map((e, i) => (
-        <circle key={i} cx={e.x} cy={Y(e.y)} r={kindR(e.k)} fill={kindColor(e.k)} stroke="#00000055" strokeWidth={0.02} />
-      ))}
+      {frame?.floor
+        .filter((e) => e.z <= 0.05)
+        .map((e, i) => (
+          <circle key={i} cx={e.x} cy={Y(e.y)} r={kindR(e.k)} fill={kindColor(e.k)} stroke="#00000055" strokeWidth={0.02} />
+        ))}
 
       {frame?.robots.map((r, i) => {
         const a: Alliance = i < 2 ? "red" : "blue";
+        const scale = Math.min(1, Math.min(r.hw, r.hl) / 0.75);
         return (
           <g key={i} transform={`translate(${r.x} ${Y(r.y)})`}>
             <rect
-              x={-ROBOT_HALF}
-              y={-ROBOT_HALF}
-              width={ROBOT_HALF * 2}
-              height={ROBOT_HALF * 2}
-              rx={0.15}
+              x={-r.hw}
+              y={-r.hl}
+              width={r.hw * 2}
+              height={r.hl * 2}
+              rx={0.12}
               fill={COLORS[a]}
               fillOpacity={r.mode === "dead" ? 0.3 : 0.9}
               stroke={r.mode === "parked" ? "#fde047" : "white"}
               strokeWidth={r.mode === "parked" ? 0.1 : 0.05}
             />
-            <text y={-0.1} textAnchor="middle" fontSize={0.42} fontWeight={700} fill="white">
+            <text y={-0.1 * scale} textAnchor="middle" fontSize={0.42 * scale} fontWeight={700} fill="white">
               {robotLabels[i]}
             </text>
             {r.held.map((k, j) => (
-              <circle key={j} cx={-0.45 + j * 0.3} cy={0.38} r={0.12} fill={kindColor(k)} stroke="#000" strokeWidth={0.02} />
+              <circle
+                key={j}
+                cx={(-0.45 + j * 0.3) * scale}
+                cy={0.38 * scale}
+                r={0.12 * scale}
+                fill={kindColor(k)}
+                stroke="#000"
+                strokeWidth={0.02}
+              />
             ))}
           </g>
         );
       })}
+
+      {frame?.floor
+        .filter((e) => e.z > 0.05)
+        .map((e, i) => {
+          const lift = Math.min(1.8, e.z);
+          return (
+            <g key={i}>
+              <ellipse cx={e.x} cy={Y(e.y)} rx={kindR(e.k)} ry={kindR(e.k) * 0.6} fill="#000" opacity={0.35} />
+              <circle
+                cx={e.x}
+                cy={Y(e.y) - lift * 0.25}
+                r={kindR(e.k) * (1 + lift * 0.2)}
+                fill={kindColor(e.k)}
+                stroke="#ffffffaa"
+                strokeWidth={0.025}
+              />
+            </g>
+          );
+        })}
     </svg>
   );
 }

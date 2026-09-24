@@ -39,7 +39,11 @@ const OUTPUTS: { name: string; means: string }[] = [
 ];
 
 const SLIDERS: { name: string; means: string }[] = [
-  { name: "Drive speed", means: "Average speed moving around the field, not your top speed on a straightaway." },
+  { name: "Width, length, weight", means: "Your robot's real frame size and weight. Size changes how you fit around the HIVE and in the LOADING ZONE. Weight decides who shoves whom in a collision." },
+  { name: "Drivetrain", means: "Tank pushes harder but loses time turning. Mecanum and swerve can strafe, so lining up is quicker." },
+  { name: "Acceleration and shot speed", means: "Acceleration is how fast you reach top speed. Shot speed is how fast a ball leaves the robot, which sets how long it hangs in the air." },
+  { name: "Carry capacity", means: "How many elements you can hold, up to the 4-element limit in G407." },
+  { name: "Drive speed", means: "Top speed in a straight line. Acceleration is separate, under Robot specs." },
   { name: "Intake time", means: "Time to grab one element once you reach it, including chasing balls that roll away." },
   { name: "Launch time", means: "Time between shots when emptying your robot into the HIVE." },
   { name: "Align / aim per trip", means: "Time lost every trip lining up to shoot or to use a FLOWER." },
@@ -57,7 +61,7 @@ const TIPS = [
 ];
 
 const LIMITS = [
-  "Robots never bump into each other, and defense is modeled as a simple slowdown, not full pushing and blocking.",
+  "Robots bump, push, and have to drive around the HIVE and FLOWERS. Defense is that contact plus a slowdown, not a full driver-versus-driver fight.",
   "Field positions (FLOWERS, LOADING ZONES, GARDENS) are approximated from the manual figures, not taken from official CAD.",
   "Robots follow simple, consistent decision rules. Real drivers adapt, make mistakes, and sometimes break down.",
   "Fouls only come from defense. Other penalties aren't modeled.",
@@ -140,7 +144,7 @@ export function Guide() {
 
       <Section icon={<Settings2 className="size-4" />} title="Under the hood" description="For the curious.">
         <p className="text-sm text-muted-foreground">
-          Each match is simulated in 0.1-second steps. Every robot repeatedly picks its next job based on its strategy: grab the best nearby element, drive into range and launch when it&apos;s full (up to 4 elements, per G407), switch to FLOWERS at its set time, and head to the LOADING ZONE when there&apos;s just enough time left to park. The HIVE tips when the upward CELL holds about 7.5 POLLEN-weights (one NECTAR ≈ 1.67 POLLEN, from the official calibration procedure). Tipping dumps the contents back onto the field and lets the human player bring in one more NECTAR. Missed shots bounce onto the floor, so elements keep cycling through the match. The showdown repeats all of this with different random luck for every pairing of strategies, then averages the results.
+          Each match is simulated in 0.1-second steps. Every robot repeatedly picks its next job based on its strategy: grab the best nearby element, drive into range and launch when it&apos;s full (up to its capacity, never more than 4, per G407), switch to FLOWERS at its set time, and head to the LOADING ZONE early enough to park. Robots accelerate up to their top speed, steer around the HIVE and FLOWERS, and push each other based on weight and drivetrain. The HIVE tips when the upward CELL holds about 7.5 POLLEN-weights (one NECTAR ≈ 1.67 POLLEN, from the official calibration procedure). Tipping spins the HIVE, then the elements fall, bounce, and roll. Shots spend real time in the air. Misses bounce onto the floor, so elements keep cycling through the match. The showdown repeats all of this with different random luck for every pairing of strategies, then averages the results.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {["Monte Carlo", "Round-robin", "Both sides of the field", "Seeded, repeatable runs"].map((t) => (

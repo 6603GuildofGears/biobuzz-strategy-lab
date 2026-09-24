@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PRESETS } from "@/lib/sim/strategies";
-import type { GameSettings, RobotProfile } from "@/lib/sim/types";
+import type { Drivetrain, GameSettings, RobotProfile } from "@/lib/sim/types";
 import { SliderRow, pct, secs } from "./slider-row";
 
 export function ProfileEditor({
@@ -25,10 +25,92 @@ export function ProfileEditor({
         ))}
       </div>
 
+      <Group title="Robot specs">
+        <SliderRow
+          label="Width"
+          hint="Frame width, side to side. The starting size limit is 18 inches."
+          value={profile.widthIn}
+          min={10}
+          max={18}
+          step={0.5}
+          format={(v) => `${v.toFixed(1)} in`}
+          onChange={(v) => set("widthIn", v)}
+        />
+        <SliderRow
+          label="Length"
+          hint="Frame length, front to back. Bigger robots take more room in the LOADING ZONE and have to swing wider around the HIVE."
+          value={profile.lengthIn}
+          min={10}
+          max={18}
+          step={0.5}
+          format={(v) => `${v.toFixed(1)} in`}
+          onChange={(v) => set("lengthIn", v)}
+        />
+        <SliderRow
+          label="Weight"
+          hint="Heavier robots push lighter ones aside in a collision. A tank drive pushes harder than mecanum at the same weight."
+          value={profile.weightLb}
+          min={8}
+          max={42}
+          step={1}
+          format={(v) => `${v.toFixed(0)} lb`}
+          onChange={(v) => set("weightLb", v)}
+        />
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Drivetrain</Label>
+          <div className="flex gap-1.5">
+            {(["mecanum", "tank", "swerve"] as Drivetrain[]).map((d) => (
+              <Button
+                key={d}
+                size="sm"
+                variant={profile.drivetrain === d ? "default" : "outline"}
+                className="h-7 flex-1 text-xs capitalize"
+                onClick={() => set("drivetrain", d)}
+              >
+                {d}
+              </Button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Tank pushes hardest but takes longer to line up. Mecanum and swerve strafe, so they lose less time aiming.
+          </p>
+        </div>
+        <SliderRow
+          label="Acceleration"
+          hint="How quickly the robot gets up to speed and stops. Low acceleration means long drives cost more than the top speed suggests."
+          value={profile.acceleration}
+          min={2}
+          max={20}
+          step={0.5}
+          format={(v) => `${v.toFixed(1)} ft/s²`}
+          onChange={(v) => set("acceleration", v)}
+        />
+        <SliderRow
+          label="Carry capacity"
+          hint="Elements the robot can hold at once. The rules cap this at 4 (G407). A smaller intake starts with the rest of its preload on the floor."
+          value={profile.capacity}
+          min={1}
+          max={4}
+          step={1}
+          format={(v) => `${v.toFixed(0)} elements`}
+          onChange={(v) => set("capacity", v)}
+        />
+        <SliderRow
+          label="Shot speed"
+          hint="How fast a launched element leaves the robot. Faster shots spend less time in the air before they land in the HIVE or bounce back."
+          value={profile.shotSpeed}
+          min={8}
+          max={40}
+          step={1}
+          format={(v) => `${v.toFixed(0)} ft/s`}
+          onChange={(v) => set("shotSpeed", v)}
+        />
+      </Group>
+
       <Group title="Speed">
         <SliderRow
           label="Drive speed"
-          hint="Average straight-line speed across the field, including acceleration."
+          hint="Top straight-line speed. Acceleration is set separately under Robot specs."
           value={profile.driveSpeed}
           min={1.5}
           max={10}
@@ -219,6 +301,38 @@ export function SettingsEditor({
           step={0.1}
           format={(v) => v.toFixed(1)}
           onChange={(v) => set("defenseFoulRate", v)}
+        />
+      </Group>
+      <Group title="Ball physics">
+        <SliderRow
+          label="HIVE spin before it dumps"
+          hint="How long the HIVE rotates before the elements fall out of a tipped CELL."
+          value={settings.tipSpinTime}
+          min={0.2}
+          max={2.5}
+          step={0.1}
+          format={secs}
+          onChange={(v) => set("tipSpinTime", v)}
+        />
+        <SliderRow
+          label="CELL drop height"
+          hint="Height the elements fall from. Higher drops bounce and roll farther from the HIVE."
+          value={settings.cellHeight}
+          min={1}
+          max={6}
+          step={0.1}
+          format={(v) => `${v.toFixed(1)} ft`}
+          onChange={(v) => set("cellHeight", v)}
+        />
+        <SliderRow
+          label="Tile friction"
+          hint="How fast a rolling element slows down. Lower friction means longer chases."
+          value={settings.ballFriction}
+          min={0.5}
+          max={8}
+          step={0.1}
+          format={(v) => `${v.toFixed(1)} ft/s²`}
+          onChange={(v) => set("ballFriction", v)}
         />
       </Group>
     </div>
