@@ -76,12 +76,12 @@ export function canShootFrom(m: MatchState, r: Robot, p: Pt): boolean {
   return facesOpening(r.alliance, m.hives[r.alliance].up, p);
 }
 
-/** Launch one element from where the robot is now. */
-export function launch(m: MatchState, r: Robot, k: Kind) {
+/** Launch one element from where the robot is now. `steadiness` below 1 means the shot is a bit off (after a bump). */
+export function launch(m: MatchState, r: Robot, k: Kind, steadiness = 1) {
   const hive = m.hives[r.alliance];
   const d = shotDistance(m, r, r);
   // A defender pushing on the robot throws the shot off.
-  const acc = shotAccuracy(r.profile, k, d) * (1 - r.slow);
+  const acc = shotAccuracy(r.profile, k, d) * (1 - r.slow) * steadiness;
   const s = m.stats[r.alliance];
   s.shots++;
   s.shotDistance += d;

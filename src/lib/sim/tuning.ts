@@ -29,6 +29,12 @@ export const STRAFE_SPEED: Record<Drivetrain, number> = { mecanum: 0.8, swerve: 
 export const TRACTION: Record<Drivetrain, number> = { mecanum: 0.7, swerve: 0.9, tank: 1 };
 /** Every timed action (intake, aim, launch, place) randomly takes up to this much longer or shorter. Drivers aren't perfectly consistent. */
 export const ACTION_TIME_JITTER = 0.15;
+/** A robot pushed farther than this (ft) from where it lined up has been bumped off its aim. Smaller nudges don't matter. */
+export const BUMP_DISTANCE = 0.3;
+/** Fixing the aim after a bump takes this fraction of the robot's full align time. */
+export const BUMP_REAIM = 0.25;
+/** The first shot after a bump goes in this fraction as often as usual. */
+export const BUMP_ACCURACY = 0.85;
 /** Extra distance (ft) past the frame edge an intake can grab a ball from. */
 export const INTAKE_REACH = 0.35;
 /** Grabbing POLLEN out of the bottom of a FLOWER takes this many times longer than off the floor. */

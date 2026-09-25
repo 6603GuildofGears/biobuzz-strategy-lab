@@ -11,7 +11,7 @@ import { CONTACT_GAP, DEFENSE_COMMIT, MIN_SHOT_DISTANCE, PIN_BACK_OFF, PIN_RESET
  *
  * Zone defense: the best place to shoot from is right in front of the upward CELL, so the defender
  * stands there. When an opponent comes to shoot, the defender pushes on it. A robot being pushed
- * moves slower, loses its aim, and shoots less accurately (defenseEffect on the Game tab).
+ * moves slower, has to correct its aim, and shoots less accurately (defenseEffect on the Game tab).
  *
  * The catch is G421: holding a robot still for more than 3 s is a PIN, a 20-point MAJOR FOUL,
  * plus another every 3 s. So the defender backs off before the count reaches 3.

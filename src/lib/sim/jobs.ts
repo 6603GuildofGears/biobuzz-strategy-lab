@@ -2,13 +2,12 @@ import { onFloor, settled } from "./balls";
 import { driveTo, resetRoute } from "./driving";
 import { FIELD, FLOWERS, INWARD, angleDiff, cellOpening, dist, len, type Pt } from "./field";
 import { placeInFlower, pullFromBottom, topNectar } from "./flowers";
-import { weightInFlight } from "./hive";
 import { freeSpot } from "./nav";
 import { AUTO_END, BALL_RADIUS, FLOWER_UNLOCK, POINTS } from "./rules";
 import { canLaunch, canShootFrom, launch, launcherHeading } from "./shooting";
 import { runDefense } from "./defense";
 import { log, ownNectar, tossBall, vary, type Ball, type Job, type MatchState, type Robot } from "./state";
-import { FLOWER_INTAKE_FACTOR, INTAKE_REACH } from "./tuning";
+import { BUMP_ACCURACY, BUMP_DISTANCE, BUMP_REAIM, FLOWER_INTAKE_FACTOR, INTAKE_REACH } from "./tuning";
 import type { Kind } from "./types";
 
 /**
@@ -32,15 +31,18 @@ export function setJob(r: Robot, job: Job | null) {
 
 const done = (r: Robot) => setJob(r, null);
 
+/** How long an action really takes this time: a little random, slower in a slow AUTO or while being pushed. */
+function actionTime(m: MatchState, r: Robot, secs: number) {
+  const speed = (m.t < AUTO_END ? r.profile.autoSpeed : 1) * (1 - r.slow);
+  return vary(m, secs) / Math.max(0.2, speed);
+}
+
 /**
  * Wait `secs` for an action. Returns true once, when it's finished. Actions are slower in
  * AUTO (if the AUTO speed slider is below 100%) and while a defender is pushing on the robot.
  */
 function timer(m: MatchState, r: Robot, secs: number): boolean {
-  if (r.busyUntil === null) {
-    const speed = (m.t < AUTO_END ? r.profile.autoSpeed : 1) * (1 - r.slow);
-    r.busyUntil = m.t + vary(m, secs) / Math.max(0.2, speed);
-  }
+  if (r.busyUntil === null) r.busyUntil = m.t + actionTime(m, r, secs);
   if (m.t + 1e-9 < r.busyUntil) return false;
   r.busyUntil = null;
   return true;
@@ -139,26 +141,33 @@ function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
   const loaded = r.held.filter((k) => canLaunch(r, k));
   // If the HIVE tipped, this spot faces the wrong end now. Let the brain pick a new one right away.
   if (loaded.length === 0 || !canShootFrom(m, r, job.spot) || outOfPatience(m, r)) return done(r);
-  const h = m.hives[r.alliance];
-  // Bumped off the spot after starting to shoot? If it can still score from here, it shoots from here.
-  if (job.fired > 0 && dist(r, job.spot) > 0.3 && len(r.vx, r.vy) < 0.3 && canShootFrom(m, r, r)) {
-    job.spot = { x: r.x, y: r.y };
-    r.arrivedAt = null;
-  }
-  const at = arrive(m, r, job.spot, 0.2, launcherHeading(r, job.spot, cellOpening(r.alliance, h.up)));
-  if (at === "stuck" || (at === "driving" && r.stuckTime > SHOOT_SPOT_JAM)) return done(r);
-  if (at !== "there") return;
-  if (!canShootFrom(m, r, r)) return done(r); // knocked somewhere it can't shoot from: pick a new spot
-  // Knocked off the spot where it lined up (a defender, usually)? It has to aim again.
-  if (job.aimedAt && dist(r, job.aimedAt) > 0.25) job.aimedAt = null;
+  const opening = cellOpening(r.alliance, m.hives[r.alliance].up);
+
+  // Step 1: get into position and line up (once per trip).
   if (!job.aimedAt) {
+    const at = arrive(m, r, job.spot, 0.2, launcherHeading(r, job.spot, opening));
+    if (at === "stuck" || (at === "driving" && r.stuckTime > SHOOT_SPOT_JAM)) return done(r);
+    if (at !== "there") return;
+    if (!canShootFrom(m, r, r)) return done(r); // pick a spot it can actually score from
     if (!timer(m, r, r.profile.alignTime)) return;
     job.aimedAt = { x: r.x, y: r.y };
+    job.nextShot = m.t;
   }
-  // Hold fire while shots already in the air should tip the HIVE, since the CELL may be about to swing away.
-  const inAir = weightInFlight(m, r.alliance);
-  if (inAir > 0 && h.weight + inAir >= m.settings.tipThreshold) return;
-  if (!timer(m, r, r.profile.launchTime)) return;
+
+  // Step 2: fire everything, one element every `launchTime`, from wherever the robot is.
+  r.face = launcherHeading(r, r, opening);
+  if (!canShootFrom(m, r, r)) {
+    // Shoved somewhere it can't score from: drive back and line up again.
+    job.aimedAt = null;
+    return;
+  }
+  if (dist(r, job.aimedAt) > BUMP_DISTANCE) {
+    // Bumped: a quick correction, and the next shot is a little less sure.
+    job.aimedAt = { x: r.x, y: r.y };
+    job.nextShot = Math.max(job.nextShot, m.t + actionTime(m, r, r.profile.alignTime * BUMP_REAIM));
+    job.bumped = true;
+  }
+  if (m.t + 1e-9 < job.nextShot) return;
 
   if (job.fired === 0) {
     m.stats[r.alliance].volleys++;
@@ -166,8 +175,12 @@ function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
   }
   const k = loaded[0];
   r.held.splice(r.held.indexOf(k), 1);
-  launch(m, r, k);
+  launch(m, r, k, job.bumped ? BUMP_ACCURACY : 1);
+  job.bumped = false;
   job.fired++;
+  // Schedule from when this shot was due (not from the step it happened on), so the average
+  // spacing matches the launch time exactly instead of rounding up to the next 0.1 s step.
+  job.nextShot = Math.max(job.nextShot, m.t - m.dt) + actionTime(m, r, r.profile.launchTime);
   r.progressAt = m.t;
   if (loaded.length === 1) {
     r.tripStart = m.t;

@@ -33,7 +33,7 @@ const pointsPerWeight = (m: MatchState) => POINTS.tip / m.settings.tipThreshold;
 const shotValue = (m: MatchState, r: Robot, k: Kind, d: number) => shotAccuracy(r.profile, k, d) * weightOf(m, k) * pointsPerWeight(m);
 
 const wait = (m: MatchState, secs: number, why: string, spot: Pt | null = null): Job => ({ type: "wait", spot, until: m.t + secs, why });
-const shootAt = (spot: Pt): Job => ({ type: "shoot", spot, aimedAt: null, fired: 0 });
+const shootAt = (spot: Pt): Job => ({ type: "shoot", spot, aimedAt: null, nextShot: 0, bumped: false, fired: 0 });
 const visitFlower = (fi: number): Job => ({ type: "flower", fi, linedUp: false, placed: 0 });
 
 // ---------- The main decision ----------
@@ -125,7 +125,7 @@ export function bestShot(m: MatchState, r: Robot, load: Kind[]): ShotPlan | null
     const free = !taken(spot);
     const d = dist(spot, opening);
     const drive = travelTime(m, r, spot);
-    const time = drive + turnTime(m, r, launcherHeading(r, spot, opening), drive) + r.profile.alignTime + load.length * r.profile.launchTime;
+    const time = drive + turnTime(m, r, launcherHeading(r, spot, opening), drive) + r.profile.alignTime + (load.length - 1) * r.profile.launchTime;
     const points = load.reduce((sum, k) => sum + shotValue(m, r, k, d), 0);
     const plan = { spot, d, time, points, rate: points / time, free };
     if (free && (!best || plan.rate > best.rate)) best = plan;

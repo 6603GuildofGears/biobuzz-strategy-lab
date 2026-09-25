@@ -153,7 +153,7 @@ export function ProfileEditor({
         />
         <SliderRow
           label="Align / aim per trip"
-          hint="Time lost each time the robot lines up to launch or to use a FLOWER. A defender that knocks the robot off its spot makes it aim again."
+          hint="Time lost each time the robot lines up to launch or to use a FLOWER. After that it fires its whole load at the launch-time pace. A bump while shooting costs a quick correction (a quarter of this) and makes the next shot a little less accurate."
           value={profile.alignTime}
           min={0}
           max={3}

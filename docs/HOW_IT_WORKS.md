@@ -87,6 +87,8 @@ The same idea picks **where** to shoot. `bestShot` tries a grid of spots in fron
 
 1. `arrive`: drive to the spot and turn to face the right way (`driveTo` in `driving.ts` does the steering).
 2. `timer`: wait for the intake, aim or launch to finish. Each timed action randomly takes up to 15% longer or shorter, because drivers aren't perfectly consistent.
+
+Shooting is the one job with two stages: line up once (the align time), then fire everything, one element every launch time. If another robot bumps it more than 0.3 ft while it's shooting, it takes a quick moment to correct (a quarter of the align time) and its next shot is a little less accurate. The numbers are in `tuning.ts` (`BUMP_DISTANCE`, `BUMP_REAIM`, `BUMP_ACCURACY`).
 3. Do it: take the ball, launch, place. Then the job is done and the brain picks the next one.
 
 ### 4. The robot moves

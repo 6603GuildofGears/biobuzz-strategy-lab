@@ -74,8 +74,11 @@ export interface FlowerTube {
 export type Job =
   | { type: "collect"; ball: Ball }
   | { type: "collectFlower"; fi: number }
-  /** `aimedAt` is where the robot finished lining up (null until then). A bump off that spot means aiming again. */
-  | { type: "shoot"; spot: Pt; aimedAt: Pt | null; fired: number }
+  /**
+   * `aimedAt`: where the robot finished lining up (null until then). `nextShot`: when it can fire next.
+   * `bumped`: it got knocked off its aim, so its next shot is a little less accurate.
+   */
+  | { type: "shoot"; spot: Pt; aimedAt: Pt | null; nextShot: number; bumped: boolean; fired: number }
   | { type: "flower"; fi: number; linedUp: boolean; placed: number }
   | { type: "park" }
   | { type: "parked" }
