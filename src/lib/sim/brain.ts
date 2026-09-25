@@ -125,7 +125,10 @@ export function bestShot(m: MatchState, r: Robot, load: Kind[]): ShotPlan | null
     const free = !taken(spot);
     const d = dist(spot, opening);
     const drive = travelTime(m, r, spot);
-    const time = drive + turnTime(m, r, launcherHeading(r, spot, opening), drive) + r.profile.alignTime + (load.length - 1) * r.profile.launchTime;
+    // A robot that shoots while driving lines up on the way, so aiming overlaps the drive.
+    const onTheMove = r.profile.shootOnTheMove && r.profile.drivetrain !== "tank";
+    const aim = onTheMove ? Math.max(0, r.profile.alignTime - drive) : r.profile.alignTime;
+    const time = drive + turnTime(m, r, launcherHeading(r, spot, opening), drive) + aim + (load.length - 1) * r.profile.launchTime;
     const points = load.reduce((sum, k) => sum + shotValue(m, r, k, d), 0);
     const plan = { spot, d, time, points, rate: points / time, free };
     if (free && (!best || plan.rate > best.rate)) best = plan;

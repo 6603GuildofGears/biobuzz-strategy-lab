@@ -35,6 +35,10 @@ export const BUMP_DISTANCE = 0.3;
 export const BUMP_REAIM = 0.25;
 /** The first shot after a bump goes in this fraction as often as usual. */
 export const BUMP_ACCURACY = 0.85;
+/** A shot fired while driving (the "Shoot while driving" setting) goes in this fraction as often as usual. */
+export const MOVING_SHOT_ACCURACY = 0.9;
+/** Faster than this (ft/s) counts as shooting on the move. */
+export const MOVING_SHOT_SPEED = 0.5;
 /** Extra distance (ft) past the frame edge an intake can grab a ball from. */
 export const INTAKE_REACH = 0.35;
 /** Grabbing POLLEN out of the bottom of a FLOWER takes this many times longer than off the floor. */

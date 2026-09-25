@@ -44,8 +44,10 @@ export interface RobotProfile {
   drivetrain: Drivetrain;
   /** How many elements the robot can hold (G407 caps this at 4). */
   capacity: number;
-  /** Intake on the front and shooter on the back, so the robot faces away from the HIVE to shoot. */
-  frontIntake: boolean;
+  /** Shooter on the back, opposite the intake, so the robot turns its back to the HIVE to shoot. Off = picks up and shoots from the front. */
+  shooterOnBack: boolean;
+  /** Can line up and shoot while still driving (mecanum or swerve only, since it needs to strafe). */
+  shootOnTheMove: boolean;
 }
 
 export type Ammo = "all" | "pollen";

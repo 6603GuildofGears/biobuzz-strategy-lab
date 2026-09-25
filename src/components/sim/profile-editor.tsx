@@ -78,12 +78,24 @@ export function ProfileEditor({
           </p>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <Label className="text-xs font-medium text-muted-foreground">Intake on the front</Label>
-          <Switch checked={profile.frontIntake} onCheckedChange={(v) => set("frontIntake", v)} />
+          <Label className="text-xs font-medium text-muted-foreground">Shooter on the back</Label>
+          <Switch checked={profile.shooterOnBack} onCheckedChange={(v) => set("shooterOnBack", v)} />
         </div>
         <p className="text-[11px] text-muted-foreground">
-          The nose mark is the intake. With a front intake the shooter faces the back, so the robot turns its back to the HIVE to shoot. Mecanum and swerve
-          turn on the way there. A tank drive has to stop and turn.
+          The nose mark is the front. Off (usual): the robot picks up and shoots from the front. On: the shooter faces backward, so the robot turns its back
+          to the HIVE to shoot. Mecanum and swerve turn on the way there. A tank drive has to stop and turn.
+        </p>
+        <div className="flex items-center justify-between gap-3">
+          <Label className="text-xs font-medium text-muted-foreground">Shoot while driving</Label>
+          <Switch
+            checked={profile.shootOnTheMove}
+            disabled={profile.drivetrain === "tank"}
+            onCheckedChange={(v) => set("shootOnTheMove", v)}
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Advanced: the robot lines up and starts firing as soon as it&apos;s in range and pointed at the CELL, without stopping. Shots on the move are a little
+          less accurate. Needs mecanum or swerve (it has to strafe while facing the HIVE).
         </p>
         <SliderRow
           label="Acceleration"
@@ -135,7 +147,7 @@ export function ProfileEditor({
           label="Intake time / element"
           hint="Time to grab one element once the robot reaches it (includes chasing rolling balls)."
           value={profile.intakeTime}
-          min={0.2}
+          min={0.05}
           max={3}
           step={0.05}
           format={secs}
@@ -145,7 +157,7 @@ export function ProfileEditor({
           label="Launch time / element"
           hint="Time between consecutive launches."
           value={profile.launchTime}
-          min={0.1}
+          min={0.05}
           max={2}
           step={0.05}
           format={secs}

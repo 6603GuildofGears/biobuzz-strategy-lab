@@ -48,7 +48,8 @@ const SLIDERS: { name: string; means: string }[] = [
   { name: "Launch time", means: "Time between shots when emptying your robot into the HIVE." },
   { name: "Align / aim per trip", means: "Time lost every trip lining up to shoot or to use a FLOWER." },
   { name: "Launch range", means: "How far the launcher is built to shoot. The robot has to shoot from the end the upward CELL is facing, and that end swaps every tip. Shots from farther away miss more, so the robots weigh distance against driving time." },
-  { name: "Intake on the front", means: "The intake is the nose and the shooter is the back, so the robot turns its back to the HIVE to shoot. Turn this off if your shooter faces the same way as your intake." },
+  { name: "Shooter on the back", means: "Off (the usual design): the robot picks up and shoots from the front. On: the shooter faces backward, so the robot turns its back to the HIVE to shoot." },
+  { name: "Shoot while driving", means: "An advanced skill (on for the Elite preset): the robot lines up and fires while still driving, instead of stopping first. Shots on the move are a little less accurate. Needs mecanum or swerve." },
   { name: "Accuracy sliders", means: "Chance a shot goes in from close range (it drops the farther away you shoot), or that a FLOWER placement stays in. Misses bounce back onto the field, where anyone can pick them up." },
   { name: "AUTO sliders", means: "How often AUTO works at all, how fast it runs compared with TELEOP, and whether it ends parked." },
 ];

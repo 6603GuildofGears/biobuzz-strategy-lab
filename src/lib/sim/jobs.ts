@@ -7,7 +7,7 @@ import { AUTO_END, BALL_RADIUS, FLOWER_UNLOCK, POINTS } from "./rules";
 import { canLaunch, canShootFrom, launch, launcherHeading } from "./shooting";
 import { runDefense } from "./defense";
 import { log, ownNectar, tossBall, vary, type Ball, type Job, type MatchState, type Robot } from "./state";
-import { BUMP_ACCURACY, BUMP_DISTANCE, BUMP_REAIM, FLOWER_INTAKE_FACTOR, INTAKE_REACH } from "./tuning";
+import { BUMP_ACCURACY, BUMP_DISTANCE, BUMP_REAIM, FLOWER_INTAKE_FACTOR, INTAKE_REACH, MOVING_SHOT_ACCURACY, MOVING_SHOT_SPEED } from "./tuning";
 import type { Kind } from "./types";
 
 /**
@@ -142,19 +142,33 @@ function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
   // If the HIVE tipped, this spot faces the wrong end now. Let the brain pick a new one right away.
   if (loaded.length === 0 || !canShootFrom(m, r, job.spot) || outOfPatience(m, r)) return done(r);
   const opening = cellOpening(r.alliance, m.hives[r.alliance].up);
+  // "Shoot while driving" needs a drivetrain that can strafe.
+  const onTheMove = r.profile.shootOnTheMove && r.profile.drivetrain !== "tank";
 
   // Step 1: get into position and line up (once per trip).
   if (!job.aimedAt) {
     const at = arrive(m, r, job.spot, 0.2, launcherHeading(r, job.spot, opening));
     if (at === "stuck" || (at === "driving" && r.stuckTime > SHOOT_SPOT_JAM)) return done(r);
-    if (at !== "there") return;
+    if (onTheMove) {
+      // Lines up while still driving, as soon as it could score from here and is pointed at the CELL.
+      const pointed = Math.abs(angleDiff(launcherHeading(r, r, opening), r.heading)) < 0.2;
+      if (at !== "there" && !(pointed && canShootFrom(m, r, r))) {
+        r.busyUntil = null;
+        return;
+      }
+    } else if (at !== "there") return;
     if (!canShootFrom(m, r, r)) return done(r); // pick a spot it can actually score from
     if (!timer(m, r, r.profile.alignTime)) return;
     job.aimedAt = { x: r.x, y: r.y };
     job.nextShot = m.t;
   }
 
-  // Step 2: fire everything, one element every `launchTime`, from wherever the robot is.
+  // Step 2: fire everything, one element every `launchTime`.
+  if (onTheMove) {
+    // Keeps driving onto its spot while firing. It aims the whole time, so a bump doesn't throw it off.
+    if (dist(r, job.spot) > 0.2) driveTo(m, r, job.spot, 0.2);
+    job.aimedAt = { x: r.x, y: r.y };
+  }
   r.face = launcherHeading(r, r, opening);
   if (!canShootFrom(m, r, r)) {
     // Shoved somewhere it can't score from: drive back and line up again.
@@ -175,7 +189,8 @@ function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
   }
   const k = loaded[0];
   r.held.splice(r.held.indexOf(k), 1);
-  launch(m, r, k, job.bumped ? BUMP_ACCURACY : 1);
+  const moving = len(r.vx, r.vy) > MOVING_SHOT_SPEED;
+  launch(m, r, k, (job.bumped ? BUMP_ACCURACY : 1) * (moving ? MOVING_SHOT_ACCURACY : 1));
   job.bumped = false;
   job.fired++;
   // Schedule from when this shot was due (not from the step it happened on), so the average
