@@ -46,7 +46,9 @@ The loop itself is in `engine.ts`, in the function `simulateMatch`. It's short, 
 | `flowers.ts` | The FLOWER tube: stacking, pulling POLLEN out the bottom, and who owns it. |
 | `balls.ts` | Ball physics: falling, bouncing, rolling to a stop. |
 | `scoring.ts` | Adding up points and RP. |
-| `tournament.ts` | The Strategy showdown: plays every strategy against every other one many times. |
+| `tournament.ts` | The Strategy showdown: schedules every match (each with its own seed), plays them, and adds up the results. |
+| `parallel.ts`, `showdown-worker.ts` | Runs the showdown on several threads at once. Each thread plays scheduled matches with the same code, so the result is identical to one thread. |
+| `mathx.ts` | Our own sin, cos and atan2, so a seed gives exactly the same match in every browser (see below). |
 
 ## Following one robot
 
@@ -120,6 +122,17 @@ A FLOWER (`flowers.ts`) is a tube. Balls stack up from the bottom. POLLEN can sl
 ### 8. The end
 
 Robots park in time because `parkDue` in `brain.ts` checks every step whether it's time to head to the LOADING ZONE. After the buzzer, `settle` in `engine.ts` keeps the physics running (robots unpowered) until everything comes to rest. Shots already in the air still count, just like the manual says. Then `scoring.ts` adds everything up.
+
+## Same seed, same match, everywhere
+
+Every match is decided by its **seed**, the starting number for the random rolls (did the shot go in, how long did the intake take). The same seed always replays the same match, which is how the Strategy showdown and the Match viewer stay in sync: click any head-to-head cell in the showdown and you watch the exact matches it counted, with a check that the score comes out the same.
+
+To make that true on every computer, two things matter:
+
+- The random numbers come from a small formula (`rng.ts`), not `Math.random`.
+- Browsers are allowed to compute `Math.sin`, `Math.cos` and `Math.atan2` slightly differently, in the 16th digit. That sounds harmless, but in a simulation tiny differences snowball, and a match can end differently. `mathx.ts` has our own versions built only from + − × ÷ and √, which every computer does exactly the same way.
+
+The showdown runs on several threads (Web Workers). It first lists every match with its seed, hands the matches out in small batches, and adds the results up in list order at the end. So it doesn't matter which thread played which match. `tests/showdown.test.ts` checks this.
 
 ## Trying things
 

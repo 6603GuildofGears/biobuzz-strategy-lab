@@ -1,3 +1,4 @@
+import { atan2, cos, sin } from "./mathx";
 import { FIELD, OBSTACLES, angleDiff, len, type Rect } from "./field";
 import { AUTO_END } from "./rules";
 import type { MatchState, Robot } from "./state";
@@ -23,8 +24,8 @@ export const turnRateOf = (m: MatchState, r: Robot) =>
 
 /** Half-size of the box the robot covers on the FIELD, which grows when it's turned at an angle. */
 export function footprint(r: Robot) {
-  const c = Math.abs(Math.cos(r.heading));
-  const s = Math.abs(Math.sin(r.heading));
+  const c = Math.abs(cos(r.heading));
+  const s = Math.abs(sin(r.heading));
   return { x: c * r.hl + s * r.hw, y: s * r.hl + c * r.hw };
 }
 
@@ -42,20 +43,20 @@ export function moveRobots(m: MatchState) {
     if (r.profile.drivetrain === "tank") {
       if (want > 0.05) {
         // Drive forward or backward, whichever needs less turning (and ends facing the right way).
-        const travel = Math.atan2(r.cmdy, r.cmdx);
+        const travel = atan2(r.cmdy, r.cmdx);
         const ref = r.face ?? r.heading;
         const heading = Math.abs(angleDiff(travel, ref)) <= Math.PI / 2 ? travel : travel + Math.PI;
         turnToward(m, r, heading);
         // It can only move along its length: keep just the part of the command that points that way.
-        const along = r.cmdx * Math.cos(r.heading) + r.cmdy * Math.sin(r.heading);
-        tx = Math.cos(r.heading) * along;
-        ty = Math.sin(r.heading) * along;
+        const along = r.cmdx * cos(r.heading) + r.cmdy * sin(r.heading);
+        tx = cos(r.heading) * along;
+        ty = sin(r.heading) * along;
       } else if (r.face !== null) turnToward(m, r, r.face);
     } else {
       if (r.face !== null) turnToward(m, r, r.face);
-      else if (want > 0.3) turnToward(m, r, Math.atan2(r.cmdy, r.cmdx));
+      else if (want > 0.3) turnToward(m, r, atan2(r.cmdy, r.cmdx));
       if (want > 0.05) {
-        const sideways = Math.abs(Math.sin(Math.atan2(r.cmdy, r.cmdx) - r.heading));
+        const sideways = Math.abs(sin(atan2(r.cmdy, r.cmdx) - r.heading));
         const scale = 1 - (1 - STRAFE_SPEED[r.profile.drivetrain]) * sideways;
         tx *= scale;
         ty *= scale;

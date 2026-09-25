@@ -1,6 +1,6 @@
 "use client";
 
-import { Pause, Play, RotateCcw, Shuffle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, Shuffle, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { AUTO_END, FLOWER_UNLOCK, MATCH_LENGTH, TELEOP_START } from "@/lib/sim/r
 import type { GameSettings, MatchResult, RobotProfile, ScoreBreakdown, Strategy } from "@/lib/sim/types";
 import { cn } from "@/lib/utils";
 import { FieldView } from "./field-view";
+import type { Replay, ReplayMatch } from "./replay";
 
 const SPEEDS = [1, 2, 4, 8];
 
@@ -40,29 +41,52 @@ export function MatchViewer({
   strategies,
   profiles,
   settings,
+  configVersion,
+  replay,
+  onExitReplay,
 }: {
   strategies: Strategy[];
   profiles: [RobotProfile, RobotProfile];
   settings: GameSettings;
+  configVersion: number;
+  /** Exact matches from the Strategy showdown to step through, or null. */
+  replay: Replay | null;
+  onExitReplay: () => void;
 }) {
-  const [redId, setRedId] = useState(strategies[0].id);
-  const [blueId, setBlueId] = useState(strategies[1].id);
-  const [seed, setSeed] = useState(42);
-  const red = strategies.find((s) => s.id === redId) ?? strategies[0];
-  const blue = strategies.find((s) => s.id === blueId) ?? strategies[1];
-  const [result, setResult] = useState<MatchResult | null>(() =>
-    simulateMatch({ red, blue, profiles, settings, seed, record: true }),
-  );
+  const first = replay?.matches[0];
+  const [redId, setRedId] = useState(first?.redId ?? strategies[0].id);
+  const [blueId, setBlueId] = useState(first?.blueId ?? strategies[1].id);
+  const [seed, setSeed] = useState(first?.seed ?? 42);
+  const [replayIndex, setReplayIndex] = useState(0);
+  const byId = (id: string, fallback: Strategy) => strategies.find((s) => s.id === id) ?? fallback;
+  const red = byId(redId, strategies[0]);
+  const blue = byId(blueId, strategies[1]);
+  const play = (r: string, b: string, s: number) =>
+    simulateMatch({ red: byId(r, strategies[0]), blue: byId(b, strategies[1]), profiles, settings, seed: s, record: true });
+  const [result, setResult] = useState<MatchResult | null>(() => play(redId, blueId, seed));
   const [frameIdx, setFrameIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(4);
   const raf = useRef<number | null>(null);
 
-  const run = (s = seed) => {
-    const r = simulateMatch({ red, blue, profiles, settings, seed: s, record: true });
-    setResult(r);
+  const load = (r: string, b: string, s: number) => {
+    setRedId(r);
+    setBlueId(b);
+    setSeed(s);
+    setResult(play(r, b, s));
     setFrameIdx(0);
     setPlaying(true);
+  };
+  const run = (s = seed) => load(redId, blueId, s);
+  const showReplay = (i: number) => {
+    const m = replay?.matches[i];
+    if (!m) return;
+    setReplayIndex(i);
+    load(m.redId, m.blueId, m.seed);
+  };
+  /** Picking your own strategies or seed leaves the showdown replay. */
+  const leaveReplay = () => {
+    if (replay) onExitReplay();
   };
 
   const frames = result?.frames ?? [];
@@ -97,14 +121,44 @@ export function MatchViewer({
     () => (result ? result.events.filter((e) => e.t <= (frame?.t ?? 0) + 0.01).reverse() : []),
     [result, frame],
   );
+  const shown = replay?.matches[replayIndex];
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <Card>
         <CardHeader className="gap-3">
+          {replay && shown && result && (
+            <ReplayBanner
+              replay={replay}
+              index={replayIndex}
+              match={shown}
+              replayed={{ red: result.red.total, blue: result.blue.total }}
+              slidersChanged={replay.configVersion !== configVersion}
+              onStep={showReplay}
+              onExit={onExitReplay}
+            />
+          )}
           <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
-            <StrategyPick label="Red alliance" color="red" value={redId} onChange={setRedId} strategies={strategies} />
-            <StrategyPick label="Blue alliance" color="blue" value={blueId} onChange={setBlueId} strategies={strategies} />
+            <StrategyPick
+              label="Red alliance"
+              color="red"
+              value={redId}
+              onChange={(v) => {
+                leaveReplay();
+                setRedId(v);
+              }}
+              strategies={strategies}
+            />
+            <StrategyPick
+              label="Blue alliance"
+              color="blue"
+              value={blueId}
+              onChange={(v) => {
+                leaveReplay();
+                setBlueId(v);
+              }}
+              strategies={strategies}
+            />
             <div className="col-span-2 flex gap-2">
               <Button className="max-sm:h-10 max-sm:flex-1" onClick={() => run()}>
                 <RotateCcw /> Run match
@@ -113,9 +167,8 @@ export function MatchViewer({
                 variant="outline"
                 className="max-sm:h-10 max-sm:flex-1"
                 onClick={() => {
-                  const s = Math.floor(Math.random() * 1e6);
-                  setSeed(s);
-                  run(s);
+                  leaveReplay();
+                  run(Math.floor(Math.random() * 1e6));
                 }}
               >
                 <Shuffle /> New seed
@@ -123,7 +176,8 @@ export function MatchViewer({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Seed {seed}. Both alliances use the same robot sliders, so only strategy and luck differ.
+            Seed {seed}. Both alliances use the same robot sliders, so only strategy and luck differ. The Strategy showdown plays matches with this exact
+            same simulation.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -306,3 +360,63 @@ function Legend() {
     </div>
   );
 }
+
+function ReplayBanner({
+  replay,
+  index,
+  match,
+  replayed,
+  slidersChanged,
+  onStep,
+  onExit,
+}: {
+  replay: Replay;
+  index: number;
+  match: ReplayMatch;
+  replayed: { red: number; blue: number };
+  slidersChanged: boolean;
+  onStep: (i: number) => void;
+  onExit: () => void;
+}) {
+  const same = replayed.red === match.redTotal && replayed.blue === match.blueTotal;
+  return (
+    <div className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold">Showdown replay</span>
+        <span className="text-muted-foreground">
+          {replay.title} · match {index + 1} of {replay.matches.length}
+        </span>
+        <div className="ml-auto flex gap-1">
+          <Button size="sm" variant="outline" className="h-7" disabled={index === 0} onClick={() => onStep(index - 1)} aria-label="Previous match">
+            <ChevronLeft />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7"
+            disabled={index >= replay.matches.length - 1}
+            onClick={() => onStep(index + 1)}
+            aria-label="Next match"
+          >
+            <ChevronRight />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7" onClick={onExit} aria-label="Leave replay">
+            <X />
+          </Button>
+        </div>
+      </div>
+      <p className="text-xs">
+        The showdown scored this match <strong className="tabular-nums">{match.redTotal}–{match.blueTotal}</strong> (red–blue). This replay scores{" "}
+        <strong className="tabular-nums">{replayed.red}–{replayed.blue}</strong>.{" "}
+        {same ? (
+          <span className="font-medium text-emerald-600">Identical: this is the same match.</span>
+        ) : slidersChanged ? (
+          <span className="font-medium text-rose-600">Different, because the sliders changed after the showdown ran. Rerun the showdown to match.</span>
+        ) : (
+          <span className="font-medium text-rose-600">Different. That shouldn&apos;t happen, so please report it.</span>
+        )}
+      </p>
+    </div>
+  );
+}
+

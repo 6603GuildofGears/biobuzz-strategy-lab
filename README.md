@@ -69,5 +69,6 @@ The simulation code lives in `src/lib/sim/`, split into small files by topic (fi
 
 - Every match runs in 0.1 s steps. Every POLLEN and NECTAR is tracked: missed shots and tipped HIVES scatter elements back onto the floor, where anyone can collect them.
 - Robots decide what to do by **expected points per second**: grab another ball only if it adds points faster than the current trip earns them, and shoot from the spot that earns the most points per second.
+- The Strategy showdown runs on several threads at once. Every match has its own seed, so the results are identical on one thread or many, and any showdown match can be replayed exactly in the Match viewer (click a head-to-head cell).
 - Field layout, point values and rules come from the Competition Manual (`rules.ts`, `field.ts`). Everything the manual doesn't say is a clearly labeled guess in `tuning.ts`.
 - The **Rules & assumptions** tab in the app lists both.

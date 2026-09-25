@@ -1,3 +1,4 @@
+import { atan2 } from "./mathx";
 import { CELL_HALF_WIDTH, CELL_OPENING_HEIGHT, CELL_OPENING_OFFSET, CENTER, HIVE_X, NECTAR_DROP, otherEnd, type HiveEnd } from "./field";
 import { FLOWER_UNLOCK, MATCH_LENGTH, POINTS, TELEOP_START } from "./rules";
 import { log, ownNectar, schedule, spawnBall, tossBall, weightOf, type MatchState, type Shot } from "./state";
@@ -78,7 +79,7 @@ export function landShots(m: MatchState) {
 }
 
 function bounceOff(m: MatchState, s: Shot) {
-  const back = Math.atan2(s.from.y - s.to.y, s.from.x - s.to.x);
+  const back = atan2(s.from.y - s.to.y, s.from.x - s.to.x);
   tossBall(
     m,
     s.k,

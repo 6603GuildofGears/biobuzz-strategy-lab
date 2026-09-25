@@ -7,6 +7,7 @@ import { describe, test } from "node:test";
 import { placeInFlower, pullFromBottom } from "../src/lib/sim/flowers";
 import { addToCell } from "../src/lib/sim/hive";
 import { scoreAlliance } from "../src/lib/sim/scoring";
+import { atan2, cos, sin } from "../src/lib/sim/mathx";
 import { physicsReach } from "../src/lib/sim/shooting";
 import { createMatch, type MatchState } from "../src/lib/sim/state";
 import { DEFAULT_SETTINGS, PRESETS, STRATEGIES } from "../src/lib/sim/strategies";
@@ -106,3 +107,19 @@ describe("Launcher physics", () => {
     assert.ok(physicsReach(26) > physicsReach(20));
   });
 });
+
+describe("Our own sin, cos and atan2 (same answer on every computer)", () => {
+  test("agree with the built-in ones to about 15 digits", () => {
+    for (let i = -200; i <= 200; i++) {
+      const x = i * 0.137;
+      assert.ok(Math.abs(sin(x) - Math.sin(x)) < 1e-14);
+      assert.ok(Math.abs(cos(x) - Math.cos(x)) < 1e-14);
+      assert.ok(Math.abs(atan2(x, 1.3) - Math.atan2(x, 1.3)) < 1e-14);
+      assert.ok(Math.abs(atan2(1.3, -x) - Math.atan2(1.3, -x)) < 1e-14);
+    }
+  });
+  test("atan2 gets every direction right", () => {
+    for (const [y, x] of [[0, 1], [1, 0], [0, -1], [-1, 0], [-1, -1], [1, -1], [0, 0]]) assert.ok(Math.abs(atan2(y, x) - Math.atan2(y, x)) < 1e-14);
+  });
+});
+

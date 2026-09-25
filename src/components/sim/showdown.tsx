@@ -9,10 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { runTournament, type TournamentResult } from "@/lib/sim/tournament";
+import { runTournamentParallel, threadCount } from "@/lib/sim/parallel";
+import type { TournamentResult } from "@/lib/sim/tournament";
 import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
+import type { Replay } from "./replay";
 
 const MATCH_OPTIONS = [20, 50, 100, 200];
 
@@ -40,11 +42,14 @@ export function Showdown({
   profiles,
   settings,
   configVersion,
+  onWatch,
 }: {
   strategies: Strategy[];
   profiles: [RobotProfile, RobotProfile];
   settings: GameSettings;
   configVersion: number;
+  /** Open exact showdown matches in the Match viewer. */
+  onWatch: (replay: Replay) => void;
 }) {
   const [enabled, setEnabled] = useState<Set<string>>(
     () => new Set(savedShowdown?.enabled ?? strategies.filter((s) => s.id !== "custom").map((s) => s.id)),
@@ -70,7 +75,7 @@ export function Showdown({
     setError(null);
     setProgress(0);
     try {
-      const res = await runTournament(
+      const res = await runTournamentParallel(
         { strategies: selected, profiles, settings, matchesPerPair: perPair, seed: 1000 },
         (d, t) => id === runId.current && setProgress(d / t),
         () => id !== runId.current,
@@ -169,7 +174,12 @@ export function Showdown({
             {selected.length < 2 && <span className="text-xs text-destructive">Pick at least two strategies.</span>}
             {stale && !running && <Badge variant="outline" className="border-amber-500 text-amber-600">Sliders changed, rerun to update</Badge>}
           </div>
-          {running && <Progress value={progress * 100} />}
+          {running && (
+            <div className="space-y-1">
+              <Progress value={progress * 100} />
+              <p className="text-xs text-muted-foreground">Running on {threadCount()} threads at once.</p>
+            </div>
+          )}
           {error && <p className="text-sm text-destructive">Simulation failed: {error}</p>}
         </CardContent>
       </Card>
@@ -277,11 +287,17 @@ export function Showdown({
               <CardHeader>
                 <CardTitle className="text-base">Head to head</CardTitle>
                 <CardDescription>
-                  Win rate of the row strategy against the column strategy{isMobile ? "." : " (average margin underneath)."}
+                  Win rate of the row strategy against the column strategy{isMobile ? "." : " (average margin underneath)."} Click a cell to watch
+                  those exact matches in the Match viewer.
                 </CardDescription>
               </CardHeader>
               <CardContent className="overflow-x-auto">
-                <HeadToHead result={result.res} strategies={result.strategies} compact={isMobile} />
+                <HeadToHead
+                  result={result.res}
+                  strategies={result.strategies}
+                  compact={isMobile}
+                  onPick={(i, j) => onWatch(replayFor(result.res, result.strategies, i, j, result.version))}
+                />
               </CardContent>
             </Card>
           </div>
@@ -308,7 +324,26 @@ function Highlight({ icon, label, value, detail }: { icon?: React.ReactNode; lab
   );
 }
 
-function HeadToHead({ result, strategies, compact }: { result: TournamentResult; strategies: Strategy[]; compact?: boolean }) {
+/** Every showdown match between strategies i and j (both sides), ready to replay. */
+function replayFor(res: TournamentResult, strategies: Strategy[], i: number, j: number, configVersion: number): Replay {
+  const matches = res.matches
+    .filter((m) => (m.red === i && m.blue === j) || (m.red === j && m.blue === i))
+    .map((m) => ({ redId: strategies[m.red].id, blueId: strategies[m.blue].id, seed: m.seed, redTotal: m.redTotal, blueTotal: m.blueTotal }));
+  const title = i === j ? `${strategies[i].name} mirror matches` : `${strategies[i].name} vs ${strategies[j].name}`;
+  return { title, matches, configVersion };
+}
+
+function HeadToHead({
+  result,
+  strategies,
+  compact,
+  onPick,
+}: {
+  result: TournamentResult;
+  strategies: Strategy[];
+  compact?: boolean;
+  onPick: (i: number, j: number) => void;
+}) {
   const color = (w: number) => {
     const hue = w >= 0.5 ? 152 : 350;
     const a = Math.min(1, Math.abs(w - 0.5) * 2);
@@ -340,9 +375,13 @@ function HeadToHead({ result, strategies, compact }: { result: TournamentResult;
                 return (
                   <td
                     key={o.id}
-                    className={cn("rounded text-center tabular-nums", compact ? "px-0.5 py-2" : "min-w-12 px-1 py-1.5")}
+                    className={cn(
+                      "cursor-pointer rounded text-center tabular-nums hover:ring-2 hover:ring-primary",
+                      compact ? "px-0.5 py-2" : "min-w-12 px-1 py-1.5",
+                    )}
                     style={{ background: i === j ? "transparent" : color(w) }}
-                    title={`${s.name} vs ${o.name}: ${pct(w)} win, ${m >= 0 ? "+" : ""}${m.toFixed(1)} pts`}
+                    title={`${s.name} vs ${o.name}: ${pct(w)} win, ${m >= 0 ? "+" : ""}${m.toFixed(1)} pts. Click to watch these matches.`}
+                    onClick={() => onPick(i, j)}
                   >
                     {i === j ? (
                       <span className="text-muted-foreground">—</span>

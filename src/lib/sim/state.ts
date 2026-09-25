@@ -1,3 +1,4 @@
+import { cos, sin } from "./mathx";
 import { GARDEN, FLOWERS, START_OPEN_END, flowerSpot, parkSpot, startPose, type HiveEnd, type Pt, type Rect } from "./field";
 import { inflatedObstacles } from "./nav";
 import { mulberry32, type Rng } from "./rng";
@@ -206,7 +207,7 @@ export function spawnBall(m: MatchState, k: Kind, p: Pt, z = 0, vx = 0, vy = 0, 
 export function tossBall(m: MatchState, k: Kind, p: Pt, z: number, sMin: number, sMax: number, dir?: number) {
   const angle = dir ?? m.rng() * Math.PI * 2;
   const speed = sMin + m.rng() * (sMax - sMin);
-  spawnBall(m, k, p, z, Math.cos(angle) * speed, Math.sin(angle) * speed, 0);
+  spawnBall(m, k, p, z, cos(angle) * speed, sin(angle) * speed, 0);
 }
 
 const emptyStats = (): PlayStats => ({ shots: 0, hits: 0, shotDistance: 0, volleys: 0, volleyElements: 0, idleTime: 0, fouls: 0 });
@@ -318,8 +319,8 @@ export function createMatch(input: MatchInput): MatchState {
         const off = hw + BALL_RADIUS.P + 0.02;
         const along = (i - cap - 0.5) * 0.25 * (slot === 0 ? 1 : -1);
         spawnBall(m, "P", {
-          x: pose.x + Math.cos(side) * off + Math.cos(pose.heading) * along,
-          y: pose.y + Math.sin(side) * off + Math.sin(pose.heading) * along,
+          x: pose.x + cos(side) * off + cos(pose.heading) * along,
+          y: pose.y + sin(side) * off + sin(pose.heading) * along,
         });
       }
     }

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Assumptions } from "./assumptions";
 import { Guide } from "./guide";
 import { MatchViewer } from "./match-viewer";
+import type { Replay } from "./replay";
 import { ProfileEditor, SettingsEditor } from "./profile-editor";
 import { Showdown } from "./showdown";
 import { StrategyLibrary } from "./strategy-library";
@@ -56,6 +57,9 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
   const [custom, setCustom] = useState<Strategy>(defaultCustom);
   const [version, setVersion] = useState(0);
   const [tab, setTab] = useState<View>(initialView);
+  /** Showdown matches picked for the Match viewer. `replayKey` restarts the viewer on each new pick. */
+  const [replay, setReplay] = useState<Replay | null>(null);
+  const [replayKey, setReplayKey] = useState(0);
   const isMobile = useIsMobile();
 
   const view: View = !isMobile && tab === "robots" ? "showdown" : tab;
@@ -174,10 +178,28 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
               <TabsTrigger value="guide">How to use</TabsTrigger>
             </TabsList>
             <TabsContent value="showdown" className="lg:pt-3">
-              <Showdown strategies={strategies} profiles={profiles} settings={settings} configVersion={version} />
+              <Showdown
+                strategies={strategies}
+                profiles={profiles}
+                settings={settings}
+                configVersion={version}
+                onWatch={(r) => {
+                  setReplay(r);
+                  setReplayKey((k) => k + 1);
+                  go("match");
+                }}
+              />
             </TabsContent>
             <TabsContent value="match" className="lg:pt-3">
-              <MatchViewer strategies={strategies} profiles={profiles} settings={settings} />
+              <MatchViewer
+                key={replayKey}
+                strategies={strategies}
+                profiles={profiles}
+                settings={settings}
+                configVersion={version}
+                replay={replay}
+                onExitReplay={() => setReplay(null)}
+              />
             </TabsContent>
             <TabsContent value="strategies" className="lg:pt-3">
               <StrategyLibrary

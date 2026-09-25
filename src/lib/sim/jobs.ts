@@ -1,3 +1,4 @@
+import { atan2, cos, sin } from "./mathx";
 import { onFloor, settled } from "./balls";
 import { driveTo, resetRoute } from "./driving";
 import { FIELD, FLOWERS, INWARD, angleDiff, cellOpening, dist, len, type Pt } from "./field";
@@ -73,7 +74,7 @@ function arrive(m: MatchState, r: Robot, goal: Pt, tol: number, face: number | n
   return "there";
 }
 
-const facing = (from: Pt, to: Pt) => Math.atan2(to.y - from.y, to.x - from.x);
+const facing = (from: Pt, to: Pt) => atan2(to.y - from.y, to.x - from.x);
 
 // ---------- Picking up ----------
 
@@ -87,8 +88,8 @@ export function grabSpot(r: Robot, b: Ball): Pt {
   const spot = freeSpot({ x: r.x + (b.x - r.x) * k, y: r.y + (b.y - r.y) * k }, Math.max(r.hw, r.hl), r.obs);
   // Facing the ball at an angle makes the robot take up more room, so it can't get as close to a wall.
   const face = facing(spot, b);
-  const c = Math.abs(Math.cos(face));
-  const s = Math.abs(Math.sin(face));
+  const c = Math.abs(cos(face));
+  const s = Math.abs(sin(face));
   const ex = c * r.hl + s * r.hw;
   const ey = s * r.hl + c * r.hw;
   return { x: Math.min(FIELD - ex, Math.max(ex, spot.x)), y: Math.min(FIELD - ey, Math.max(ey, spot.y)) };
@@ -242,7 +243,7 @@ function placeFlower(m: MatchState, r: Robot, job: Extract<Job, { type: "flower"
   } else {
     // A miss bounces off the top of the FLOWER onto the tiles.
     const fl = FLOWERS[job.fi];
-    const out = Math.atan2(fl.out.y, fl.out.x);
+    const out = atan2(fl.out.y, fl.out.x);
     tossBall(m, k, { x: fl.x + fl.out.x * 0.5, y: fl.y + fl.out.y * 0.5 }, 1.6, 0.4, 1.6, out + (m.rng() - 0.5) * 2);
   }
 }

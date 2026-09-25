@@ -1,3 +1,4 @@
+import { atan2, cos } from "./mathx";
 import { dist, len, type Pt } from "./field";
 import { freeSpot, pathLength, planPath } from "./nav";
 import { accelOf, topSpeed } from "./motion";
@@ -89,7 +90,7 @@ export function driveTo(m: MatchState, r: Robot, goal: Pt, tol: number, ignore?:
 
   // Jammed? Back off sideways for a moment. (A tank drive turning to face its route isn't jammed.)
   const moving = len(r.vx, r.vy);
-  const along = Math.abs(Math.cos(Math.atan2(dy, dx) - r.heading));
+  const along = Math.abs(cos(atan2(dy, dx) - r.heading));
   const tankTurning = r.profile.drivetrain === "tank" && along < 0.9;
   if (speed > 0.8 && moving < 0.3 * Math.min(speed, vmax) && !tankTurning) r.stuckTime += m.dt;
   else r.stuckTime = Math.max(0, r.stuckTime - m.dt * 0.5);

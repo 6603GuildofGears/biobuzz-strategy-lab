@@ -1,3 +1,4 @@
+import { atan2 } from "./mathx";
 import { CENTER, CELL_OPENING_HEIGHT, cellOpening, cellTarget, dist, facesOpening, type Pt } from "./field";
 import { ownNectar, type MatchState, type Robot } from "./state";
 import { ACCURACY_AT_MAX_RANGE, LAUNCH_HEIGHT, MIN_SHOT_DISTANCE } from "./tuning";
@@ -57,7 +58,7 @@ export const canLaunch = (r: Robot, k: Kind) => k === "P" || (r.role.ammo === "a
 
 /** Which way the robot must face so its launcher points from `from` at `target`. */
 export const launcherHeading = (r: Robot, from: Pt, target: Pt) =>
-  Math.atan2(target.y - from.y, target.x - from.x) + (r.profile.shooterOnBack ? Math.PI : 0);
+  atan2(target.y - from.y, target.x - from.x) + (r.profile.shooterOnBack ? Math.PI : 0);
 
 /** Distance from a spot to this robot's upward CELL opening. */
 export const shotDistance = (m: MatchState, r: Robot, p: Pt) => dist(p, cellOpening(r.alliance, m.hives[r.alliance].up));
