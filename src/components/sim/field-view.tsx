@@ -1,15 +1,20 @@
 "use client";
 
 import {
+  CELL_HALF_WIDTH,
+  CELL_OPENING_OFFSET,
+  CENTER,
   FIELD,
+  FLOWER_RADIUS,
   FLOWERS,
   GARDEN,
-  HIVE_BASE,
-  HIVE_CELL_OFFSET,
-  HIVE_POS,
+  HIVE_FOOTPRINT,
+  HIVE_FRAME,
+  HIVE_X,
   LOADING_ZONE,
   type Rect,
 } from "@/lib/sim/field";
+import { BALL_RADIUS } from "@/lib/sim/rules";
 import type { Alliance, Frame, Kind } from "@/lib/sim/types";
 
 const COLORS = {
@@ -19,7 +24,7 @@ const COLORS = {
 };
 
 const kindColor = (k: Kind) => (k === "P" ? COLORS.pollen : k === "R" ? COLORS.red : COLORS.blue);
-const kindR = (k: Kind) => (k === "P" ? 0.117 : 0.15);
+/** SVG y grows downward, FIELD y grows toward the rear wall, so flip it. */
 const Y = (y: number) => FIELD - y;
 
 function Zone({ r, color, dash }: { r: Rect; color: string; dash?: boolean }) {
@@ -35,6 +40,48 @@ function Zone({ r, color, dash }: { r: Rect; color: string; dash?: boolean }) {
       strokeWidth={0.06}
       strokeDasharray={dash ? "0.15 0.1" : undefined}
     />
+  );
+}
+
+/** One alliance's HIVE: a CELL at each end. The upward CELL is filled and shows how many elements it holds. */
+function Hive({ a, frame }: { a: Alliance; frame: Frame | undefined }) {
+  const up = frame?.hiveUp[a] ?? (a === "red" ? "south" : "north");
+  const count = frame?.cells[a].length ?? 3;
+  const x = HIVE_X[a];
+  const cellDepth = 1;
+  return (
+    <g>
+      <line x1={x} y1={Y(CENTER - CELL_OPENING_OFFSET + 0.3)} x2={x} y2={Y(CENTER + CELL_OPENING_OFFSET - 0.3)} stroke={COLORS[a]} strokeWidth={0.08} />
+      {(["north", "south"] as const).map((end) => {
+        const s = end === "north" ? 1 : -1;
+        const isUp = end === up;
+        const outer = CENTER + s * CELL_OPENING_OFFSET;
+        const inner = outer - s * cellDepth;
+        const y0 = Math.min(inner, outer);
+        return (
+          <g key={end}>
+            <rect
+              x={x - CELL_HALF_WIDTH}
+              y={Y(y0 + cellDepth)}
+              width={CELL_HALF_WIDTH * 2}
+              height={cellDepth}
+              rx={0.08}
+              fill={isUp ? COLORS[a] : "#111827"}
+              fillOpacity={isUp ? 0.85 : 1}
+              stroke={COLORS[a]}
+              strokeWidth={0.06}
+            />
+            {/* The open side of the upward CELL, where shots go in. */}
+            {isUp && <line x1={x - CELL_HALF_WIDTH} y1={Y(outer)} x2={x + CELL_HALF_WIDTH} y2={Y(outer)} stroke="white" strokeWidth={0.1} />}
+            {isUp && (
+              <text x={x} y={Y(y0 + cellDepth / 2) + 0.15} textAnchor="middle" fontSize={0.42} fontWeight={700} fill="white">
+                {count}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
   );
 }
 
@@ -63,72 +110,39 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
         </g>
       ))}
 
+      {/* HIVE frame: robots can drive under it, but not through the two A-frame ends. */}
       <rect
-        x={HIVE_BASE.x0}
-        y={Y(HIVE_BASE.y1)}
-        width={HIVE_BASE.x1 - HIVE_BASE.x0}
-        height={HIVE_BASE.y1 - HIVE_BASE.y0}
+        x={HIVE_FOOTPRINT.x0}
+        y={Y(HIVE_FOOTPRINT.y1)}
+        width={HIVE_FOOTPRINT.x1 - HIVE_FOOTPRINT.x0}
+        height={HIVE_FOOTPRINT.y1 - HIVE_FOOTPRINT.y0}
         fill="#4b5563"
-        fillOpacity={0.25}
+        fillOpacity={0.12}
         stroke="#6b7280"
-        strokeWidth={0.05}
+        strokeWidth={0.03}
+        strokeDasharray="0.12 0.08"
       />
-      {(["red", "blue"] as Alliance[]).map((a) => {
-        const north = (frame?.hiveFlip[a] ?? 0) % 2 === 0;
-        const y = north ? HIVE_BASE.y1 : HIVE_BASE.y0;
-        const x0 = a === "red" ? HIVE_BASE.x0 : 6;
-        const x1 = a === "red" ? 6 : HIVE_BASE.x1;
-        return <line key={a} x1={x0} y1={Y(y)} x2={x1} y2={Y(y)} stroke={COLORS[a]} strokeWidth={0.14} />;
-      })}
-      {(["red", "blue"] as Alliance[]).map((a) => {
-        const h = HIVE_POS[a];
-        const flip = frame ? frame.hiveFlip[a] % 2 : 0;
-        const cells = [h.y + HIVE_CELL_OFFSET, h.y - HIVE_CELL_OFFSET];
-        const count = frame?.cells[a].length ?? 0;
-        return (
-          <g key={a}>
-            <line x1={h.x} y1={Y(cells[0])} x2={h.x} y2={Y(cells[1])} stroke={COLORS[a]} strokeWidth={0.08} />
-            {cells.map((cy, i) => {
-              const up = i === flip;
-              return (
-                <g key={i}>
-                  <rect
-                    x={h.x - 0.55}
-                    y={Y(cy) - 0.4}
-                    width={1.1}
-                    height={0.8}
-                    rx={0.08}
-                    fill={up ? COLORS[a] : "#111827"}
-                    fillOpacity={up ? 0.85 : 1}
-                    stroke={COLORS[a]}
-                    strokeWidth={0.06}
-                  />
-                  {up && (
-                    <text x={h.x} y={Y(cy) + 0.14} textAnchor="middle" fontSize={0.4} fontWeight={700} fill="white">
-                      {count}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        );
-      })}
+      {HIVE_FRAME.map((r, i) => (
+        <rect key={i} x={r.x0} y={Y(r.y1)} width={r.x1 - r.x0} height={r.y1 - r.y0} fill="#9ca3af" />
+      ))}
+      <Hive a="red" frame={frame} />
+      <Hive a="blue" frame={frame} />
 
       {FLOWERS.map((f, i) => {
         const st = frame?.flowers[i];
-        const top = st ? [...st.stack].reverse().find((k) => k !== "P") : undefined;
+        const top = st ? [...st.volume].reverse().find((k) => k !== "P") : undefined;
         const ring = top === "R" ? COLORS.red : top === "B" ? COLORS.blue : "#d1d5db";
-        const labelY = f.y < 6 ? Y(f.y) - 0.62 : Y(f.y) + 0.85;
+        const lx = f.x + f.out.x * 1.05;
+        const ly = f.y + f.out.y * 0.95;
         return (
           <g key={i}>
-            <circle cx={f.x} cy={Y(f.y)} r={0.36} fill="#0f172a" stroke={ring} strokeWidth={0.1} />
-            {st?.stack.map((k, j) => (
-              <circle key={j} cx={f.x - 0.2 + (j % 3) * 0.2} cy={Y(f.y) - 0.1 + Math.floor(j / 3) * 0.2} r={0.08} fill={kindColor(k)} />
+            <circle cx={f.x} cy={Y(f.y)} r={FLOWER_RADIUS} fill="#0f172a" stroke={ring} strokeWidth={0.1} />
+            {st?.volume.map((k, j) => (
+              <circle key={j} cx={f.x - 0.2 + (j % 3) * 0.2} cy={Y(f.y) - 0.15 + Math.floor(j / 3) * 0.17} r={0.075} fill={kindColor(k)} />
             ))}
-            <text x={f.x} y={labelY} textAnchor="middle" fontSize={0.28} fill="#9ca3af">
-              F{i + 1} · {st?.stack.length ?? 0}
-              {st && st.bottom > 0 ? ` (+${st.bottom}↓)` : ""}
+            <text x={lx} y={Y(ly) + 0.1} textAnchor="middle" fontSize={0.26} fill="#9ca3af">
+              F{i + 1} · {st?.volume.length ?? 0}
+              {st && st.below > 0 ? ` (+${st.below}↓)` : ""}
             </text>
           </g>
         );
@@ -137,7 +151,7 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
       {frame?.floor
         .filter((e) => e.z <= 0.05)
         .map((e, i) => (
-          <circle key={i} cx={e.x} cy={Y(e.y)} r={kindR(e.k)} fill={kindColor(e.k)} stroke="#00000055" strokeWidth={0.02} />
+          <circle key={i} cx={e.x} cy={Y(e.y)} r={BALL_RADIUS[e.k]} fill={kindColor(e.k)} stroke="#00000055" strokeWidth={0.02} />
         ))}
 
       {frame?.robots.map((r, i) => {
@@ -152,7 +166,7 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
               height={r.hw * 2}
               rx={0.12}
               fill={COLORS[a]}
-              fillOpacity={r.mode === "dead" ? 0.3 : 0.9}
+              fillOpacity={r.mode === "wait" && frame.t < 30 ? 0.3 : 0.9}
               stroke={r.mode === "parked" ? "#fde047" : "white"}
               strokeWidth={r.mode === "parked" ? 0.1 : 0.05}
             />
@@ -161,15 +175,7 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
               {robotLabels[i]}
             </text>
             {r.held.map((k, j) => (
-              <circle
-                key={j}
-                cx={(-0.45 + j * 0.3) * scale}
-                cy={0.38 * scale}
-                r={0.12 * scale}
-                fill={kindColor(k)}
-                stroke="#000"
-                strokeWidth={0.02}
-              />
+              <circle key={j} cx={(-0.45 + j * 0.3) * scale} cy={0.38 * scale} r={0.12 * scale} fill={kindColor(k)} stroke="#000" strokeWidth={0.02} />
             ))}
           </g>
         );
@@ -179,17 +185,11 @@ export function FieldView({ frame, robotLabels }: { frame: Frame | undefined; ro
         .filter((e) => e.z > 0.05)
         .map((e, i) => {
           const lift = Math.min(1.8, e.z);
+          const r = BALL_RADIUS[e.k];
           return (
             <g key={i}>
-              <ellipse cx={e.x} cy={Y(e.y)} rx={kindR(e.k)} ry={kindR(e.k) * 0.6} fill="#000" opacity={0.35} />
-              <circle
-                cx={e.x}
-                cy={Y(e.y) - lift * 0.25}
-                r={kindR(e.k) * (1 + lift * 0.2)}
-                fill={kindColor(e.k)}
-                stroke="#ffffffaa"
-                strokeWidth={0.025}
-              />
+              <ellipse cx={e.x} cy={Y(e.y)} rx={r} ry={r * 0.6} fill="#000" opacity={0.35} />
+              <circle cx={e.x} cy={Y(e.y) - lift * 0.25} r={r * (1 + lift * 0.2)} fill={kindColor(e.k)} stroke="#ffffffaa" strokeWidth={0.025} />
             </g>
           );
         })}

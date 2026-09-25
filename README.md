@@ -27,12 +27,9 @@ A Monte Carlo strategy simulator for the FIRST Tech Challenge 2026–27 game **B
 ```bash
 npm install
 npm run dev        # http://localhost:4817
-```
-
-For a quick check from the command line (it prints one match log and a small tournament):
-
-```bash
-npm run smoke -- Average   # or Rookie / Elite
+npm test           # checks the rules (scoring, HIVE calibration, FLOWERS, physics)
+npm run measure -- Average   # how the robots behave: hit rate, elements per trip, idle time
+npm run smoke -- Average     # one match log plus a small tournament (or Rookie / Elite)
 ```
 
 These addresses open a section directly. The home page is unchanged.
@@ -68,10 +65,9 @@ To build the static files yourself, run `npm run build`. The output goes to `out
 
 ## How the model works
 
-The simulation code lives in `src/lib/sim/`:
+The simulation code lives in `src/lib/sim/`, split into small files by topic (field, HIVE, FLOWERS, robot brain, driving, physics, scoring). **[docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)** walks through it, following one robot through a cycle.
 
-- `engine.ts` runs a time-stepped simulation (0.1 s steps) of all 4 robots. Every POLLEN and NECTAR is tracked individually: missed shots and tipped HIVES scatter pieces back onto the floor, where anyone can collect them. Robots follow simple decision rules (pick the best nearby piece, launch when full, switch to FLOWERS at a set time, park near the end).
-- `strategies.ts` defines the strategies, the robot presets, and the default game assumptions.
-- `tournament.ts` runs the round robin and adds up the results.
-
-Rules taken from the manual, and assumptions the simulator makes where the manual is silent, are listed on the **Rules & assumptions** tab in the app.
+- Every match runs in 0.1 s steps. Every POLLEN and NECTAR is tracked: missed shots and tipped HIVES scatter elements back onto the floor, where anyone can collect them.
+- Robots decide what to do by **expected points per second**: grab another ball only if it adds points faster than the current trip earns them, and shoot from the spot that earns the most points per second.
+- Field layout, point values and rules come from the Competition Manual (`rules.ts`, `field.ts`). Everything the manual doesn't say is a clearly labeled guess in `tuning.ts`.
+- The **Rules & assumptions** tab in the app lists both.

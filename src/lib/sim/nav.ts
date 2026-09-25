@@ -1,9 +1,17 @@
 import { FIELD, OBSTACLES, dist, inflate, type Pt, type Rect } from "./field";
 
+/**
+ * Route planning. The trick: grow every obstacle by the robot's half size. Then the robot
+ * can be treated as a single point, and a route is clear if the straight line misses
+ * every grown obstacle.
+ */
+
 const EPS = 1e-3;
 
-/** True if segment a→b passes through the interior of `r`. */
+/** True if the segment a→b passes through the inside of `r`. */
 export function segHitsRect(a: Pt, b: Pt, r: Rect): boolean {
+  // Quick reject: the segment's bounding box doesn't even touch the rectangle.
+  if (Math.max(a.x, b.x) <= r.x0 || Math.min(a.x, b.x) >= r.x1 || Math.max(a.y, b.y) <= r.y0 || Math.min(a.y, b.y) >= r.y1) return false;
   const x0 = r.x0 + EPS;
   const y0 = r.y0 + EPS;
   const x1 = r.x1 - EPS;
@@ -12,6 +20,7 @@ export function segHitsRect(a: Pt, b: Pt, r: Rect): boolean {
   const dy = b.y - a.y;
   let t0 = 0;
   let t1 = 1;
+  // Clip the segment against each side of the box (Liang–Barsky).
   const clip = (p: number, q: number) => {
     if (Math.abs(p) < 1e-12) return q >= 0;
     const t = q / p;
@@ -29,41 +38,43 @@ export function segHitsRect(a: Pt, b: Pt, r: Rect): boolean {
 
 export const insideRect = (p: Pt, r: Rect) => p.x > r.x0 && p.x < r.x1 && p.y > r.y0 && p.y < r.y1;
 
-/** Obstacles grown by the robot's half extents, so the robot can be treated as a point. */
-export const inflatedObstacles = (hw: number, hl: number): Rect[] => OBSTACLES.map((o) => inflate(o, hw + 0.03, hl + 0.03));
+/** Obstacles grown by the robot's half size. */
+export const inflatedObstacles = (half: number): Rect[] => OBSTACLES.map((o) => inflate(o, half + 0.03));
 
-/** Nudge a target so a robot with these half extents can actually sit there. */
-export function freeSpot(p: Pt, hw: number, hl: number, obs: Rect[]): Pt {
-  let x = Math.min(FIELD - hw, Math.max(hw, p.x));
-  let y = Math.min(FIELD - hl, Math.max(hl, p.y));
+const blocked = (a: Pt, b: Pt, obs: Rect[]) => obs.some((r) => segHitsRect(a, b, r));
+
+/** Move a target to the nearest place a robot of this half size can actually sit. */
+export function freeSpot(p: Pt, half: number, obs: Rect[]): Pt {
+  let x = Math.min(FIELD - half, Math.max(half, p.x));
+  let y = Math.min(FIELD - half, Math.max(half, p.y));
   for (let pass = 0; pass < 2; pass++) {
     for (const r of obs) {
       if (!insideRect({ x, y }, r)) continue;
-      const opts = [
+      const options = [
         { d: x - r.x0, x: r.x0 - 0.02, y },
         { d: r.x1 - x, x: r.x1 + 0.02, y },
         { d: y - r.y0, x, y: r.y0 - 0.02 },
         { d: r.y1 - y, x, y: r.y1 + 0.02 },
-      ].filter((o) => o.x >= hw && o.x <= FIELD - hw && o.y >= hl && o.y <= FIELD - hl);
-      opts.sort((a, b) => a.d - b.d);
-      if (opts[0]) {
-        x = opts[0].x;
-        y = opts[0].y;
-      }
+      ].filter((o) => o.x >= half && o.x <= FIELD - half && o.y >= half && o.y <= FIELD - half);
+      options.sort((a, b) => a.d - b.d);
+      if (options[0]) ({ x, y } = options[0]);
     }
   }
   return { x, y };
 }
 
-const blocked = (a: Pt, b: Pt, obs: Rect[]) => obs.some((r) => segHitsRect(a, b, r));
+/** Obstacle corners, and the straight-line distance between every pair of corners that can see each other. */
+interface CornerGraph {
+  corners: Pt[];
+  links: number[][];
+}
+/** The obstacles never move, so each robot's corner graph is built once and reused. */
+const cornerGraphs = new WeakMap<Rect[], CornerGraph>();
 
-/**
- * Shortest route from `from` to `to` around the (inflated) obstacles, using a
- * visibility graph over obstacle corners. Returns the waypoints after `from`.
- */
-export function planPath(from: Pt, to: Pt, hw: number, hl: number, obs: Rect[]): Pt[] {
-  if (!blocked(from, to, obs)) return [to];
-  const nodes: Pt[] = [from, to];
+function cornerGraph(half: number, obs: Rect[]): CornerGraph {
+  const cached = cornerGraphs.get(obs);
+  if (cached) return cached;
+  const corners: Pt[] = [];
   for (const r of obs) {
     for (const c of [
       { x: r.x0 - 0.05, y: r.y0 - 0.05 },
@@ -71,75 +82,59 @@ export function planPath(from: Pt, to: Pt, hw: number, hl: number, obs: Rect[]):
       { x: r.x1 + 0.05, y: r.y1 + 0.05 },
       { x: r.x0 - 0.05, y: r.y1 + 0.05 },
     ]) {
-      if (c.x < hw || c.x > FIELD - hw || c.y < hl || c.y > FIELD - hl) continue;
+      if (c.x < half || c.x > FIELD - half || c.y < half || c.y > FIELD - half) continue;
       if (obs.some((o) => insideRect(c, o))) continue;
-      nodes.push(c);
+      corners.push(c);
     }
   }
-  const n = nodes.length;
-  const best = new Array<number>(n).fill(Infinity);
+  const links = corners.map((a) => corners.map((b) => (a === b || blocked(a, b, obs) ? Infinity : dist(a, b))));
+  const graph = { corners, links };
+  cornerGraphs.set(obs, graph);
+  return graph;
+}
+
+/**
+ * Shortest route from `from` to `to` around the obstacles. The only places a shortest route
+ * ever bends are obstacle corners, so we search a graph of corners (Dijkstra's algorithm).
+ * Returns the waypoints after `from`.
+ */
+export function planPath(from: Pt, to: Pt, half: number, obs: Rect[]): Pt[] {
+  if (!blocked(from, to, obs)) return [to];
+  const { corners, links } = cornerGraph(half, obs);
+  const n = corners.length;
+  const toGoal = corners.map((c) => (blocked(c, to, obs) ? Infinity : dist(c, to)));
+  const best = corners.map((c) => (blocked(from, c, obs) ? Infinity : dist(from, c)));
   const prev = new Array<number>(n).fill(-1);
   const done = new Array<boolean>(n).fill(false);
-  best[0] = 0;
+  let finish = -1;
+  let finishCost = Infinity;
   for (let it = 0; it < n; it++) {
     let u = -1;
     for (let i = 0; i < n; i++) if (!done[i] && (u < 0 || best[i] < best[u])) u = i;
-    if (u < 0 || best[u] === Infinity) break;
-    if (u === 1) break;
+    if (u < 0 || best[u] === Infinity || best[u] >= finishCost) break;
     done[u] = true;
+    if (best[u] + toGoal[u] < finishCost) {
+      finishCost = best[u] + toGoal[u];
+      finish = u;
+    }
     for (let v = 0; v < n; v++) {
-      if (done[v] || v === u) continue;
-      const w = best[u] + dist(nodes[u], nodes[v]);
-      if (w >= best[v]) continue;
-      if (blocked(nodes[u], nodes[v], obs)) continue;
-      best[v] = w;
-      prev[v] = u;
+      const w = best[u] + links[u][v];
+      if (!done[v] && w < best[v]) {
+        best[v] = w;
+        prev[v] = u;
+      }
     }
   }
-  if (prev[1] < 0) return [to];
-  const path: Pt[] = [];
-  for (let v = 1; v !== 0 && v >= 0; v = prev[v]) path.unshift(nodes[v]);
+  if (finish < 0) return [to];
+  const path: Pt[] = [to];
+  for (let v = finish; v >= 0; v = prev[v]) path.unshift(corners[v]);
   return path;
 }
 
-/** One-corner route around the first obstacle. Used by the showdown, where full path search is too slow. */
-export function cheapPath(from: Pt, to: Pt, obs: Rect[]): Pt[] {
-  let hit: Rect | null = null;
-  for (const r of obs) {
-    if (segHitsRect(from, to, r)) {
-      hit = r;
-      break;
-    }
-  }
-  if (!hit) return [to];
-  const corners = [
-    { x: hit.x0 - 0.05, y: hit.y0 - 0.05 },
-    { x: hit.x1 + 0.05, y: hit.y0 - 0.05 },
-    { x: hit.x1 + 0.05, y: hit.y1 + 0.05 },
-    { x: hit.x0 - 0.05, y: hit.y1 + 0.05 },
-  ];
-  let best = corners[0];
-  let bestLen = Infinity;
-  for (const c of corners) {
-    const len = dist(from, c) + dist(c, to);
-    if (len < bestLen) {
-      bestLen = len;
-      best = c;
-    }
-  }
-  return [best, to];
-}
-
-/** Cheap path-length estimate for planning decisions (one corner detour at most). */
+/** Quick route-length estimate for planning decisions: straight line, or around one obstacle. */
 export function pathLength(from: Pt, to: Pt, obs: Rect[]): number {
   const direct = dist(from, to);
-  let hit: Rect | null = null;
-  for (const r of obs) {
-    if (segHitsRect(from, to, r)) {
-      hit = r;
-      break;
-    }
-  }
+  const hit = obs.find((r) => segHitsRect(from, to, r));
   if (!hit) return direct;
   const corners = [
     { x: hit.x0, y: hit.y0 },

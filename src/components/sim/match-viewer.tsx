@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { FRAME_DT, simulateMatch } from "@/lib/sim/engine";
-import { AUTO_END, FLOWER_UNLOCK, MATCH_LENGTH, TELEOP_START } from "@/lib/sim/field";
+import { AUTO_END, FLOWER_UNLOCK, MATCH_LENGTH, TELEOP_START } from "@/lib/sim/rules";
 import type { GameSettings, MatchResult, RobotProfile, ScoreBreakdown, Strategy } from "@/lib/sim/types";
 import { cn } from "@/lib/utils";
 import { FieldView } from "./field-view";
@@ -302,7 +302,7 @@ function Legend() {
       {item("#ef4444", "Red NECTAR")}
       {item("#3b82f6", "Blue NECTAR")}
       {item("#6b7280", "Solid box = LOADING ZONE, dashed = GARDEN", true)}
-      <span>Filled HIVE cell = upward CELL (number = elements inside). FLOWER ring color = owner.</span>
+      <span>Filled HIVE CELL = upward CELL (number = elements inside, white edge = where shots go in). FLOWER ring color = owner. Faded robot = its AUTO didn&apos;t run.</span>
     </div>
   );
 }

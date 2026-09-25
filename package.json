@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start -p 4817",
     "lint": "eslint",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "measure": "tsx scripts/measure.ts",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

@@ -74,9 +74,9 @@ export const STRATEGIES: Strategy[] = [
   {
     id: "hive-defense",
     name: "Hive + Defender",
-    tagline: "One robot shoots, the other plays defense",
+    tagline: "One robot shoots, the other guards the opponent's CELL",
     description:
-      "Robot 1 cycles the HIVE all match. In TELEOP, Robot 2 shadows the nearest opposing scorer to slow it down (risking MAJOR FOULS for PINNING), then parks.",
+      "Robot 1 cycles the HIVE all match. In TELEOP, Robot 2 plays zone defense: it stands in front of the opponent's upward CELL and pushes robots that come to shoot (backing off before a 3-second PIN), then parks.",
     roles: [hive("Hive cycler"), hive("Defender", { defend: true })],
   },
 ];
@@ -111,7 +111,7 @@ export const PRESETS: Record<string, RobotProfile> = {
     drivetrain: "tank",
     acceleration: 5,
     capacity: 3,
-    shotSpeed: 14,
+    shotSpeed: 18,
     frontIntake: true,
   },
   Average: {
@@ -164,9 +164,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   tipThreshold: 7.5,
   tipVariance: 0.35,
   nectarWeight: 1.67,
-  flowerCapacity: 5,
+  /** Figure 10-5 shows about 7 elements fitting between the middle and top rings. */
+  flowerCapacity: 7,
   defenseEffect: 0.35,
-  defenseFoulRate: 0.6,
   tipSpinTime: 1,
   cellHeight: 3,
   ballFriction: 2.5,

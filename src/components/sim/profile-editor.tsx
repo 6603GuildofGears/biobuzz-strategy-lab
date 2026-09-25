@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { physicsReach } from "@/lib/sim/shooting";
 import { PRESETS } from "@/lib/sim/strategies";
 import type { Drivetrain, GameSettings, RobotProfile } from "@/lib/sim/types";
 import { SliderRow, pct, secs } from "./slider-row";
@@ -72,7 +73,8 @@ export function ProfileEditor({
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Tank pushes hardest but takes longer to line up and to spin. Mecanum and swerve strafe, so they lose less time aiming.
+            Tank pushes hardest, but it can only drive the way it points, so it turns before it moves. Mecanum and swerve can drive sideways and turn while
+            they drive (mecanum is a bit slower sideways).
           </p>
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -80,7 +82,8 @@ export function ProfileEditor({
           <Switch checked={profile.frontIntake} onCheckedChange={(v) => set("frontIntake", v)} />
         </div>
         <p className="text-[11px] text-muted-foreground">
-          The nose mark is the intake. With a front intake the shooter faces the back, so the robot has to spin around before it can shoot. A tank drive takes longer to turn than mecanum or swerve.
+          The nose mark is the intake. With a front intake the shooter faces the back, so the robot turns its back to the HIVE to shoot. Mecanum and swerve
+          turn on the way there. A tank drive has to stop and turn.
         </p>
         <SliderRow
           label="Acceleration"
@@ -104,12 +107,15 @@ export function ProfileEditor({
         />
         <SliderRow
           label="Shot speed"
-          hint="How fast a launched element leaves the robot. Faster shots fly less time and can reach the HIVE from farther away. A slow shot cannot score from the back of the field."
+          hint="How fast a launched element leaves the robot. The upward CELL opening is about 5 ft off the floor, so a ball needs about 15.5 ft/s just to get up there. Faster shots can score from farther away."
           value={profile.shotSpeed}
-          min={8}
+          min={14}
           max={40}
           step={1}
-          format={(v) => `${v.toFixed(0)} ft/s`}
+          format={(v) => {
+            const reach = physicsReach(v);
+            return reach > 0 ? `${v.toFixed(0)} ft/s (reaches ${reach.toFixed(1)} ft)` : `${v.toFixed(0)} ft/s (can't reach)`;
+          }}
           onChange={(v) => set("shotSpeed", v)}
         />
       </Group>
@@ -147,7 +153,7 @@ export function ProfileEditor({
         />
         <SliderRow
           label="Align / aim per trip"
-          hint="Fixed time lost each time the robot lines up to launch or to use a FLOWER."
+          hint="Time lost each time the robot lines up to launch or to use a FLOWER. A defender that knocks the robot off its spot makes it aim again."
           value={profile.alignTime}
           min={0}
           max={3}
@@ -166,7 +172,7 @@ export function ProfileEditor({
         />
         <SliderRow
           label="Launch range"
-          hint="How far this launcher is built to throw. Shot speed can cut that shorter. Shots only go in from in front of your HIVE opening."
+          hint="How far this launcher is built to shoot. Shot speed can cut that shorter. Shots only go in from in front of your upward CELL. Accuracy drops the farther away you shoot."
           value={profile.launchRange}
           min={2.5}
           max={10}
@@ -179,6 +185,7 @@ export function ProfileEditor({
       <Group title="Accuracy">
         <SliderRow
           label="POLLEN launch accuracy"
+          hint="Chance a shot goes in from close range. At the robot's longest range it drops to half of this."
           value={profile.pollenAccuracy}
           min={0.2}
           max={1}
@@ -280,7 +287,7 @@ export function SettingsEditor({
       <Group title="FLOWER">
         <SliderRow
           label="Scoring volume capacity"
-          hint="How many elements fit between the top and middle ring. The manual does not give a number."
+          hint="How many elements fit between the middle and top rings. Figure 10-5 in the manual shows about 7."
           value={settings.flowerCapacity}
           min={2}
           max={10}
@@ -291,23 +298,14 @@ export function SettingsEditor({
       </Group>
       <Group title="Defense">
         <SliderRow
-          label="Slowdown while defended"
+          label="Defense push effect"
+          hint="While a defender is pressed against a robot, that robot drives and works this much slower, and its shots are this much less accurate. Heavier defenders push harder. Pins over 3 s are 20-point MAJOR FOULS (G421), so defenders back off in time."
           value={settings.defenseEffect}
           min={0}
           max={0.9}
           step={0.05}
           format={pct}
           onChange={(v) => set("defenseEffect", v)}
-        />
-        <SliderRow
-          label="MAJOR FOULS / min of contact"
-          hint="Pins (G421) and other contact penalties credited to the opponent at 20 points each."
-          value={settings.defenseFoulRate}
-          min={0}
-          max={3}
-          step={0.1}
-          format={(v) => v.toFixed(1)}
-          onChange={(v) => set("defenseFoulRate", v)}
         />
       </Group>
       <Group title="Ball physics">
@@ -323,7 +321,7 @@ export function SettingsEditor({
         />
         <SliderRow
           label="CELL drop height"
-          hint="Height the elements fall from. Higher drops bounce and roll farther from the HIVE."
+          hint="Height elements fall from when a tipped CELL empties (the lowered CELL hangs about 2.5 to 4 ft up). Higher drops bounce and roll farther."
           value={settings.cellHeight}
           min={1}
           max={6}

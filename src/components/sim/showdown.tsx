@@ -164,7 +164,7 @@ export function Showdown({
             </div>
             <Button onClick={run} disabled={running || selected.length < 2} className="max-sm:h-10 max-sm:w-full">
               {running ? <Loader2 className="animate-spin" /> : <Play />}
-              {running ? "Simulating…" : `Run ${selected.length * selected.length * perPair} matches`}
+              {running ? "Simulating…" : `Run ${selected.length * selected.length * Math.ceil(perPair / 2)} matches`}
             </Button>
             {selected.length < 2 && <span className="text-xs text-destructive">Pick at least two strategies.</span>}
             {stale && !running && <Badge variant="outline" className="border-amber-500 text-amber-600">Sliders changed, rerun to update</Badge>}
