@@ -16,6 +16,7 @@ import type { Replay } from "./replay";
 import { ProfileEditor, SettingsEditor } from "./profile-editor";
 import { Showdown } from "./showdown";
 import { StrategyLibrary } from "./strategy-library";
+import { TeamByline } from "./team";
 import { fullTitle } from "./view-titles";
 
 /** "robots" only exists on phones, where the settings panel gets its own screen. */
@@ -105,12 +106,16 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
         <div className="flex flex-wrap items-center gap-2">
           <Hexagon className="size-6 fill-amber-400 text-amber-500" />
           <h1 className="text-xl font-bold tracking-tight lg:text-2xl">BIOBUZZ Strategy Lab</h1>
+          <TeamByline />
           <Button variant="outline" size="sm" className="ml-auto hidden lg:inline-flex" onClick={() => go("guide")}>
             <BookOpen /> How it works
           </Button>
         </div>
         <p className={cn("max-w-3xl text-sm text-muted-foreground", view !== "showdown" && "hidden lg:block")}>
-          Monte Carlo simulator for the 2026–27 FTC game. Set how fast and accurate your robots are, then play the strategies against each other to see which one wins the most.
+          Monte Carlo simulator for the 2026–27 FTC game. Set how fast and accurate your robots are, then play the strategies against each other to see which one wins the most.{" "}
+          <button type="button" className="font-medium text-foreground underline-offset-4 hover:underline" onClick={() => go("guide")}>
+            Why we built this
+          </button>
         </p>
       </header>
 
