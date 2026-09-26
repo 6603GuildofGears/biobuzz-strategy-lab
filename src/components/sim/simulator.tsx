@@ -16,6 +16,7 @@ import type { Replay } from "./replay";
 import { ProfileEditor, SettingsEditor } from "./profile-editor";
 import { Showdown } from "./showdown";
 import { StrategyLibrary } from "./strategy-library";
+import { fullTitle } from "./view-titles";
 
 /** "robots" only exists on phones, where the settings panel gets its own screen. */
 type View = "showdown" | "match" | "robots" | "strategies" | "rules" | "guide";
@@ -81,13 +82,19 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
     setTab(v);
     const next = pathFor(v);
     if (window.location.pathname !== next) {
+      // Set the title first: Google Analytics records a page view on the URL change and reads the title then.
+      document.title = fullTitle(v);
       window.history.pushState({ view: v }, "", next);
     }
     if (isMobile) window.scrollTo({ top: 0 });
   };
 
   useEffect(() => {
-    const onPop = () => setTab(viewFromPath(window.location.pathname));
+    const onPop = () => {
+      const v = viewFromPath(window.location.pathname);
+      document.title = fullTitle(v);
+      setTab(v);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);

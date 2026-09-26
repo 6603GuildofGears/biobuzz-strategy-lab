@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { SITE_TITLE } from "@/components/sim/view-titles";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -18,7 +19,8 @@ const geistMono = Geist_Mono({
 const GA_ID = "G-FG5QSVKZK6";
 
 export const metadata: Metadata = {
-  title: "BIOBUZZ Strategy Lab",
+  // Each section page sets its own title, e.g. "Match viewer | BIOBUZZ Strategy Lab".
+  title: { default: SITE_TITLE, template: `%s | ${SITE_TITLE}` },
   description: "Monte Carlo strategy simulator for the FTC 2026-27 BIOBUZZ game",
 };
 
