@@ -9,8 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { runTournamentParallel, threadCount } from "@/lib/sim/parallel";
-import type { TournamentResult } from "@/lib/sim/tournament";
+import { runTournamentParallel } from "@/lib/sim/parallel";
+import { byPlayoffRank, byQualificationRank, type TournamentResult } from "@/lib/sim/tournament";
 import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
@@ -59,6 +59,7 @@ export function Showdown({
   );
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [rankBy, setRankBy] = useState<"qual" | "playoff">("qual");
   const [result, setResult] = useState<{ res: TournamentResult; version: number; strategies: Strategy[] } | null>(
     () => (savedShowdown ? { res: savedShowdown.res, version: savedShowdown.version, strategies: savedShowdown.strategies } : null),
   );
@@ -103,9 +104,10 @@ export function Showdown({
   }, []);
 
   const stale = result && (result.version !== configVersion || result.strategies.length !== selected.length);
-  const ranked = result ? [...result.res.stats].sort((a, b) => b.avgMargin - a.avgMargin) : [];
+  const ranked = result ? [...result.res.stats].sort(rankBy === "qual" ? byQualificationRank : byPlayoffRank) : [];
   const best = ranked[0];
-  const bestRP = result ? [...result.res.stats].sort((a, b) => b.avgRP - a.avgRP)[0] : undefined;
+  const bestQual = result ? [...result.res.stats].sort(byQualificationRank)[0] : undefined;
+  const bestPlayoff = result ? [...result.res.stats].sort(byPlayoffRank)[0] : undefined;
 
   const chartData = ranked.map((s) => ({
     name: s.name,
@@ -177,7 +179,6 @@ export function Showdown({
           {running && (
             <div className="space-y-1">
               <Progress value={progress * 100} />
-              <p className="text-xs text-muted-foreground">Running on {threadCount()} threads at once.</p>
             </div>
           )}
           {error && <p className="text-sm text-destructive">Simulation failed: {error}</p>}
@@ -197,14 +198,14 @@ export function Showdown({
           <div className="grid gap-4 md:grid-cols-3">
             <Highlight
               icon={<Trophy className="size-4 text-amber-500" />}
-              label="Best strategy (point margin)"
-              value={best.name}
-              detail={`${best.avgMargin >= 0 ? "+" : ""}${best.avgMargin.toFixed(1)} pts/match · ${pct(best.wins / best.matches)} wins`}
+              label="Best for qualifications (RP / match)"
+              value={bestQual?.name ?? ""}
+              detail={`${bestQual?.avgRP.toFixed(2)} RP · ${pct(bestQual?.p2Rate ?? 0)} hit 7+ tips`}
             />
             <Highlight
-              label="Best for rankings (RP / match)"
-              value={bestRP?.name ?? ""}
-              detail={`${bestRP?.avgRP.toFixed(2)} RP · ${pct(bestRP?.p2Rate ?? 0)} hit 7+ tips`}
+              label="Best for playoffs (win %)"
+              value={bestPlayoff?.name ?? ""}
+              detail={`${pct(((bestPlayoff?.wins ?? 0) + (bestPlayoff?.ties ?? 0) * 0.5) / (bestPlayoff?.matches ?? 1))} wins · ${(bestPlayoff?.avgMargin ?? 0) >= 0 ? "+" : ""}${bestPlayoff?.avgMargin.toFixed(1)} pts/match`}
             />
             <Highlight
               label="Highest raw score"
@@ -216,7 +217,24 @@ export function Showdown({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Rankings</CardTitle>
-              <CardDescription>{result.res.matchesPerPair} matches per pairing. Sorted by average point margin against the whole field.</CardDescription>
+              <CardDescription>
+                {result.res.matchesPerPair} matches per pairing.{" "}
+                {rankBy === "qual"
+                  ? "Sorted like qualification rankings (Table 13-1): average RP, then average score without foul points, then TIPS, then AUTO points."
+                  : "Sorted for playoffs, where only winning matters (no RP): win %, then average point margin."}
+              </CardDescription>
+              <div className="flex gap-1.5 pt-1">
+                {(
+                  [
+                    ["qual", "Qualifications (RP)"],
+                    ["playoff", "Playoffs (win %)"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <Button key={k} size="sm" variant={rankBy === k ? "default" : "outline"} className="h-7 text-xs" onClick={() => setRankBy(k)}>
+                    {label}
+                  </Button>
+                ))}
+              </div>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>

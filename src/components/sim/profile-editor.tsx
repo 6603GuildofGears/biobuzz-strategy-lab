@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { physicsReach } from "@/lib/sim/shooting";
+import { launchHeight, physicsReach } from "@/lib/sim/shooting";
 import { PRESETS } from "@/lib/sim/strategies";
 import type { Drivetrain, GameSettings, RobotProfile } from "@/lib/sim/types";
 import { SliderRow, pct, secs } from "./slider-row";
@@ -46,6 +46,16 @@ export function ProfileEditor({
           step={0.5}
           format={(v) => `${v.toFixed(1)} in`}
           onChange={(v) => set("lengthIn", v)}
+        />
+        <SliderRow
+          label="Height when extended"
+          hint="Tallest the robot gets with lifts and arms up. Robots start inside an 18 inch cube and can extend to 29 inches after the match starts (R105). Shots leave the launcher and climb steeply, so only a robot taller than the ball's path, pressed right against the front of a shooter, can block its shots. Matters most for defenders."
+          value={profile.heightIn}
+          min={12}
+          max={29}
+          step={1}
+          format={(v) => `${v.toFixed(0)} in`}
+          onChange={(v) => set("heightIn", v)}
         />
         <SliderRow
           label="Weight"
@@ -108,6 +118,16 @@ export function ProfileEditor({
           onChange={(v) => set("acceleration", v)}
         />
         <SliderRow
+          label="Intake width"
+          hint="How much of the front the intake covers. Robots drive over balls to pick them up, and any ball that goes into the intake comes in, so a full-width intake needs less lining up and scoops up neighbors too."
+          value={profile.intakeWidth}
+          min={0.25}
+          max={1}
+          step={0.05}
+          format={(v) => `${Math.round(v * 100)}% of front (${(v * profile.widthIn).toFixed(1)} in)`}
+          onChange={(v) => set("intakeWidth", v)}
+        />
+        <SliderRow
           label="Carry capacity"
           hint="Elements the robot can hold at once. The rules cap this at 4 (G407). A smaller intake starts with the rest of its preload on the floor."
           value={profile.capacity}
@@ -125,10 +145,20 @@ export function ProfileEditor({
           max={40}
           step={1}
           format={(v) => {
-            const reach = physicsReach(v);
+            const reach = physicsReach(v, launchHeight(profile));
             return reach > 0 ? `${v.toFixed(0)} ft/s (reaches ${reach.toFixed(1)} ft)` : `${v.toFixed(0)} ft/s (can't reach)`;
           }}
           onChange={(v) => set("shotSpeed", v)}
+        />
+        <SliderRow
+          label="Launcher height"
+          hint="How high the ball leaves the launcher. A defender standing in front of you can knock down shots that are still low, so a higher launcher clears it sooner. It also means less climb to the CELL, so the same shot speed reaches a little farther."
+          value={profile.launchHeightIn}
+          min={8}
+          max={28}
+          step={0.5}
+          format={(v) => `${v.toFixed(1)} in`}
+          onChange={(v) => set("launchHeightIn", v)}
         />
       </Group>
 
@@ -145,11 +175,11 @@ export function ProfileEditor({
         />
         <SliderRow
           label="Intake time / element"
-          hint="Time to grab one element once the robot reaches it (includes chasing rolling balls)."
+          hint="How long the rollers take to pull a ball in. Robots pick balls up on the run, but they can only drive over a ball as fast as the intake can swallow it (about 1 ft per intake time), so a quicker intake means less slowing down."
           value={profile.intakeTime}
           min={0.05}
-          max={3}
-          step={0.05}
+          max={0.4}
+          step={0.01}
           format={secs}
           onChange={(v) => set("intakeTime", v)}
         />
@@ -318,6 +348,16 @@ export function SettingsEditor({
           step={0.05}
           format={pct}
           onChange={(v) => set("defenseEffect", v)}
+        />
+        <SliderRow
+          label="Blocked shot knocked down"
+          hint="When a robot stands in a shot's path (tall enough and right in front of the launcher), the chance that shot gets knocked down. Shooters keep shooting through a defender, so this is how much a good blocker cuts their make rate."
+          value={settings.blockChance}
+          min={0}
+          max={1}
+          step={0.05}
+          format={pct}
+          onChange={(v) => set("blockChance", v)}
         />
       </Group>
       <Group title="Ball physics">

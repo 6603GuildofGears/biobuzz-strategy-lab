@@ -1,8 +1,9 @@
 import { moveBalls, onFloor } from "./balls";
 import { chooseJob, parkDue } from "./brain";
-import { applyDefense } from "./defense";
+import { applyDefense, backOff } from "./defense";
 import { LOADING_ZONE, len } from "./field";
 import { dropNectar, landShots } from "./hive";
+import { intakeBalls } from "./intake";
 import { runJob, setJob } from "./jobs";
 import { collideRobots, moveRobots } from "./motion";
 import { AUTO_END, FLOWER_UNLOCK, MATCH_LENGTH, POINTS, TELEOP_START } from "./rules";
@@ -21,7 +22,7 @@ export const FRAME_DT = DT;
  *
  *   every 0.1 s:  things that were scheduled happen (spills, NECTAR drops)
  *                 each robot decides what to do and steers   (brain.ts, jobs.ts, driving.ts)
- *                 robots and balls move                       (motion.ts, balls.ts)
+ *                 robots and balls move, intakes pull balls in (motion.ts, intake.ts, balls.ts)
  *                 shots that arrive land in the CELL or bounce (hive.ts)
  *   at the end:   wait for everything to come to rest, then score (scoring.ts)
  */
@@ -53,7 +54,7 @@ export function simulateMatch(input: MatchInput): MatchResult {
       applyDefense(m);
       for (const r of m.robots) updateRobot(m, r);
     } else for (const r of m.robots) stop(r); // G403: no powered movement between AUTO and TELEOP
-    physics(m);
+    physics(m, powered);
     if (m.record) recordFrame(m);
   }
 
@@ -74,9 +75,11 @@ function runScheduled(m: MatchState) {
   for (const e of due) e.fn();
 }
 
-function physics(m: MatchState) {
+/** `powered`: robots are running, so their intakes pull in balls they drive over. */
+function physics(m: MatchState, powered: boolean) {
   moveRobots(m);
   collideRobots(m);
+  if (powered) intakeBalls(m);
   landShots(m);
   moveBalls(m);
 }
@@ -91,6 +94,7 @@ function stop(r: Robot) {
 function updateRobot(m: MatchState, r: Robot) {
   stop(r);
   if (parkDue(m, r)) setJob(r, { type: "park" });
+  if (backOff(m, r)) return; // about to be called for a PIN: back off first (G421)
   // If a job finishes right away, start the next one in the same step so no time is wasted.
   for (let i = 0; i < 3; i++) {
     if (!r.job) setJob(r, chooseJob(m, r));
@@ -105,6 +109,7 @@ function endAuto(m: MatchState) {
   for (const r of m.robots) {
     r.left = !touchingWall(r);
     r.autoParked = partlyIn(r, LOADING_ZONE[r.alliance]);
+    r.obs = r.teleopObs; // the whole FIELD is open in TELEOP
     setJob(r, null);
     stop(r);
   }
@@ -127,7 +132,7 @@ function settle(m: MatchState) {
   while (m.t < end) {
     m.t += m.dt;
     runScheduled(m);
-    physics(m);
+    physics(m, false);
     if (m.record) recordFrame(m);
     const calm =
       m.shots.length === 0 &&
@@ -141,7 +146,7 @@ function settle(m: MatchState) {
 function recordFrame(m: MatchState) {
   const inAir = m.shots.map((s) => {
     const u = Math.min(1, Math.max(0, (m.t - s.t0) / (s.t1 - s.t0)));
-    return { x: s.from.x + (s.to.x - s.from.x) * u, y: s.from.y + (s.to.y - s.from.y) * u, z: shotHeight(m.t - s.t0, s.t1 - s.t0), k: s.k };
+    return { x: s.from.x + (s.to.x - s.from.x) * u, y: s.from.y + (s.to.y - s.from.y) * u, z: shotHeight(m.t - s.t0, s.t1 - s.t0, s.h0), k: s.k };
   });
   m.frames.push({
     t: m.t,

@@ -13,7 +13,7 @@ export const DT = 0.1;
 export const MAX_SETTLE_TIME = 5;
 
 // ---------- Launching ----------
-/** Height (ft) a ball leaves the launcher. */
+/** Height (ft) a ball leaves the launcher, if a robot profile doesn't say. (Each robot has a Launcher height slider.) */
 export const LAUNCH_HEIGHT = 1.2;
 /** Closest (ft) a robot can shoot from, measured to the CELL opening. Any closer and the ball can't arc in. */
 export const MIN_SHOT_DISTANCE = 1.5;
@@ -41,6 +41,13 @@ export const MOVING_SHOT_ACCURACY = 0.9;
 export const MOVING_SHOT_SPEED = 0.5;
 /** Extra distance (ft) past the frame edge an intake can grab a ball from. */
 export const INTAKE_REACH = 0.35;
+/** Rollers start pulling a ball in this far (ft) in front of the frame. */
+export const INTAKE_MOUTH_REACH = 0.15;
+/**
+ * How far (ft) a ball travels into the intake while the rollers pull it in. Robots drive over balls
+ * instead of stopping, but no faster than this distance per intake time, or the ball bounces off.
+ */
+export const INTAKE_DEPTH = 1;
 /** Grabbing POLLEN out of the bottom of a FLOWER takes this many times longer than off the floor. */
 export const FLOWER_INTAKE_FACTOR = 1.3;
 
@@ -65,4 +72,6 @@ export const PIN_BACK_OFF = 2.3;
 export const PIN_RESET_GAP = 2;
 export const PIN_RESET_TIME = 3;
 /** A defender sticks with one target for at least this long before switching. */
-export const DEFENSE_COMMIT = 4;
+export const DEFENSE_COMMIT = 1;
+/** Drivers don't react instantly: a defender updates where it's heading this often (seconds). */
+export const DEFENDER_REACTION = 0.3;

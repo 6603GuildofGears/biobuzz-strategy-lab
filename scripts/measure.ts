@@ -12,7 +12,7 @@ const preset = (process.argv[2] ?? "Average") as keyof typeof PRESETS;
 const perPair = Number(process.argv[3] ?? 4);
 const profiles = [PRESETS[preset], PRESETS[preset]] as [typeof PRESETS.Average, typeof PRESETS.Average];
 
-const total: PlayStats = { shots: 0, hits: 0, shotDistance: 0, volleys: 0, volleyElements: 0, idleTime: 0, fouls: 0 };
+const total: PlayStats = { shots: 0, hits: 0, shotDistance: 0, blocked: 0, volleys: 0, volleyElements: 0, idleTime: 0, fouls: 0 };
 let matches = 0;
 let tips = 0;
 let score = 0;
@@ -38,4 +38,5 @@ console.log(`  shots                ${per(total.shots)}   hit rate ${pct(total.h
 console.log(`  avg shot distance    ${(total.shotDistance / total.shots).toFixed(2)} ft`);
 console.log(`  elements per volley  ${(total.volleyElements / total.volleys).toFixed(2)}`);
 console.log(`  idle robot-seconds   ${per(total.idleTime)} per alliance (TELEOP)`);
+console.log(`  shots blocked        ${per(total.blocked)} per alliance`);
 console.log(`  PIN fouls            ${per(total.fouls)} per alliance`);

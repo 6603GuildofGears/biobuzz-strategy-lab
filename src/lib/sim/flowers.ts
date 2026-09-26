@@ -64,6 +64,13 @@ export function planFlower(m: MatchState, a: Alliance, fi: number, held: Kind[],
   let used = 0;
   while (stack.length < m.settings.flowerCapacity) {
     const owner = topNectar(stack);
+    if (mode === "claim") {
+      // Only FLOWERS with no NECTAR yet: the bottom NECTAR bonus, and owning it for now.
+      if (bottomNectar(stack) !== null || nectar === 0) break;
+      value += POINTS.bottomNectar + POINTS.ownedFlowerElement * (stack.length + 1);
+      used++;
+      break;
+    }
     if (owner !== a && nectar > 0) {
       if (bottomNectar(stack) === null) value += POINTS.bottomNectar;
       value += POINTS.ownedFlowerElement * (stack.length + 1);

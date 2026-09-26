@@ -5,7 +5,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { simulateMatch } from "../src/lib/sim/engine";
-import { FIELD, OBSTACLES } from "../src/lib/sim/field";
+import { CENTER, FIELD, OBSTACLES } from "../src/lib/sim/field";
+import { AUTO_END } from "../src/lib/sim/rules";
 import { DEFAULT_SETTINGS, PRESETS, STRATEGIES } from "../src/lib/sim/strategies";
 import type { MatchResult, RobotProfile } from "../src/lib/sim/types";
 
@@ -60,6 +61,22 @@ describe("Robots stay where robots can be", () => {
           const inside = b.x > o.x0 + slack && b.x < o.x1 - slack && b.y > o.y0 + slack && b.y < o.y1 - slack;
           assert.ok(!inside, `robot center inside an obstacle at t=${f.t}`);
         }
+      }
+    }
+  });
+});
+
+describe("AUTO (G402)", () => {
+  test("robots stay entirely on their own half until AUTO ends", () => {
+    for (const seed of [21, 22, 23]) {
+      const r = play(seed, true, PRESETS.Elite, STRATEGIES[0], STRATEGIES[2]);
+      for (const f of r.frames!) {
+        if (f.t >= AUTO_END) break;
+        f.robots.forEach((b, i) => {
+          const ex = Math.abs(Math.cos(b.heading)) * b.hl + Math.abs(Math.sin(b.heading)) * b.hw;
+          const onOwnHalf = i < 2 ? b.x + ex <= CENTER + 0.01 : b.x - ex >= CENTER - 0.01;
+          assert.ok(onOwnHalf, `robot ${i} over the center line at t=${f.t.toFixed(1)}`);
+        });
       }
     }
   });

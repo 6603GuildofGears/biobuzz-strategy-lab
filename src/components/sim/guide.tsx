@@ -26,8 +26,8 @@ const STEPS = [
 ];
 
 const OUTPUTS: { name: string; means: string }[] = [
-  { name: "Best strategy (point margin)", means: "The strategy that beats the rest of the field by the most points on average. It's the best single answer to \"which strategy is best?\"" },
-  { name: "Best for rankings (RP / match)", means: "The strategy that earns the most RANKING POINTS per match: win/tie points plus the SWARM and POLLINATOR bonuses. In qualification matches this is what moves you up the rankings." },
+  { name: "Best for qualifications (RP / match)", means: "The strategy that earns the most RANKING POINTS per match: win/tie points plus the SWARM and POLLINATOR bonuses. Qualification rankings are by average RP (Table 13-1), so this is what moves you up the rankings. The Rankings table is sorted this way by default, with the manual's tiebreakers (score without foul points, then TIPS, then AUTO points)." },
+  { name: "Best for playoffs (win %)", means: "Playoffs have no RP: alliances advance by winning (13.7). This is the strategy that wins most often. Switch the Rankings table to \"Playoffs (win %)\" to sort it that way." },
   { name: "Win %", means: "How often the strategy wins against every strategy you selected, with ties counted as half a win." },
   { name: "Avg score / Margin", means: "Average points scored, and average points scored minus points allowed. A positive margin means the strategy usually outscores its opponents." },
   { name: "± SD", means: "How much the score swings from match to match. Lower means more consistent and predictable." },
@@ -40,11 +40,14 @@ const OUTPUTS: { name: string; means: string }[] = [
 
 const SLIDERS: { name: string; means: string }[] = [
   { name: "Width, length, weight", means: "Your robot's real frame size and weight. Size changes how you fit around the HIVE and in the LOADING ZONE. Weight decides who shoves whom in a collision." },
+  { name: "Height when extended", means: "How tall the robot gets with everything raised (29 in is the legal limit). A tall defender pressed against the front of a shooter knocks down a share of its shots (Game tab slider)." },
+  { name: "Launcher height", means: "How high the ball leaves your launcher. Higher clears a defender sooner, and the ball has less to climb to reach the CELL." },
   { name: "Drivetrain", means: "Tank pushes harder but can only drive the way it points, so it turns before it moves. Mecanum and swerve can drive sideways and turn on the move." },
   { name: "Acceleration and shot speed", means: "Acceleration is how fast you reach top speed. Shot speed is how fast a ball leaves the robot. The CELL opening is about 5 ft up, so a slow launcher can't reach it from far away (or at all, below about 15.5 ft/s). The slider shows how far your speed reaches." },
+  { name: "Intake width", means: "How much of the front the intake covers. Robots drive over balls to pick them up. A wide intake needs less lining up and grabs nearby balls too." },
   { name: "Carry capacity", means: "How many elements you can hold, up to the 4-element limit in G407." },
   { name: "Drive speed", means: "Top speed in a straight line. Acceleration is separate, under Robot specs." },
-  { name: "Intake time", means: "Time to grab one element once you reach it, including chasing balls that roll away." },
+  { name: "Intake time", means: "How long the rollers take to pull a ball in (0.05 to 0.4 s). Robots don't stop to pick up, but they can only drive over a ball as fast as the intake can swallow it." },
   { name: "Launch time", means: "Time between shots when emptying your robot into the HIVE." },
   { name: "Align / aim per trip", means: "Time lost every trip lining up to shoot or to use a FLOWER." },
   { name: "Launch range", means: "How far the launcher is built to shoot. The robot has to shoot from the end the upward CELL is facing, and that end swaps every tip. Shots from farther away miss more, so the robots weigh distance against driving time." },
@@ -63,10 +66,10 @@ const TIPS = [
 ];
 
 const LIMITS = [
-  "Robots bump, push, and drive around the HIVE frame and FLOWERS. Defense is zone defense plus pushing, not a full driver-versus-driver fight.",
+  "Robots bump, push, and drive around the HIVE frame and FLOWERS. A defender reads where each opponent is going to shoot and tries to get in front of it first, but it isn't a full driver-versus-driver fight.",
   "Field positions are measured from the manual's drawings, not the official CAD.",
   "Robots make sensible, consistent decisions (points per second), with some random variation in how long things take. Real drivers adapt, make bigger mistakes, and sometimes break down.",
-  "Fouls only come from PINS on defense. Other penalties aren't modeled.",
+  "Fouls only come from PINS (any robot, G421). Robots back off before a PIN reaches 3 s, so they're rare. Other penalties aren't modeled.",
   "See Rules & assumptions for exactly what comes from the manual and what is an estimate.",
 ];
 
@@ -146,7 +149,7 @@ export function Guide() {
 
       <Section icon={<Settings2 className="size-4" />} title="Under the hood" description="For the curious.">
         <p className="text-sm text-muted-foreground">
-          Each match is simulated in 0.1-second steps. Whenever a robot finishes a job, it picks the next one by estimating expected points per second: a shot is worth its chance of going in times its share of a 20-point tip. The robot grabs another ball only if that adds points faster than its current trip is earning them, and it shoots from the spot that earns the most points per second (closer is more accurate, but getting there takes time). Robots switch to FLOWERS at their set time, finish a tip first if they&apos;re one volley away, and leave early enough to park. They accelerate, turn at their drivetrain&apos;s rate, steer around the HIVE frame, FLOWERS and each other, and push each other based on weight and traction. The HIVE tips when the upward CELL holds about 7.5 POLLEN-weights (one NECTAR ≈ 1.67 POLLEN, from the official calibration procedure). Tipping spins the HIVE, then the elements pour out and roll. Shots follow real projectile paths, and misses bounce back onto the floor. After the buzzer everything settles before scoring. The showdown repeats all of this with different random luck for every pairing of strategies, then averages the results. It runs on several threads at once, and every match has its own seed, so any showdown match can be replayed exactly in the Match viewer. The code lives in src/lib/sim/, and docs/HOW_IT_WORKS.md walks through it.
+          Each match is simulated in 0.1-second steps. Whenever a robot finishes a job, it picks the next one by estimating expected points per second: a shot is worth its chance of going in times its share of a 20-point tip. Robots pick balls up on the run, driving over them intake first. The robot grabs another ball only if that adds points faster than its current trip is earning them, and it shoots from the spot that earns the most points per second (closer is more accurate, but getting there takes time). Robots switch to FLOWERS at their set time, finish a tip first if they&apos;re one volley away, and leave early enough to park. They accelerate, turn at their drivetrain&apos;s rate, steer around the HIVE frame, FLOWERS and each other, and push each other based on weight and traction. The HIVE tips when the upward CELL holds about 7.5 POLLEN-weights (one NECTAR ≈ 1.67 POLLEN, from the official calibration procedure). Tipping spins the HIVE, then the elements pour out and roll. Shots follow real projectile paths, and misses bounce back onto the floor. After the buzzer everything settles before scoring. The showdown repeats all of this with different random luck for every pairing of strategies, then averages the results. It runs on several threads at once, and every match has its own seed, so any showdown match can be replayed exactly in the Match viewer. The code lives in src/lib/sim/, and docs/HOW_IT_WORKS.md walks through it.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {["Monte Carlo", "Round-robin", "Both sides of the field", "Seeded, repeatable runs", "Multi-threaded"].map((t) => (

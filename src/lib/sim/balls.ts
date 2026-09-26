@@ -1,6 +1,6 @@
 import { FIELD, FLOWER_BLOCKS, HIVE_FRAME, len } from "./field";
 import { BALL_RADIUS } from "./rules";
-import { footprint } from "./motion";
+import { footprint, headingTrig } from "./motion";
 import type { Ball, MatchState } from "./state";
 import { BUMPER_HEIGHT } from "./tuning";
 
@@ -76,7 +76,7 @@ function pushOutOfBox(b: Ball, x0: number, y0: number, x1: number, y1: number): 
 
 export function moveBalls(m: MatchState) {
   const dt = m.dt;
-  const robotBoxes = m.robots.map((robot) => ({ robot, e: footprint(robot) }));
+  const robotBoxes = m.robots.map((robot) => ({ robot, e: footprint(robot), c: headingTrig(robot).c, s: headingTrig(robot).s }));
   for (const b of m.balls) {
     const r = BALL_RADIUS[b.k];
     const airborne = b.z > 0 || b.vz !== 0;
@@ -122,17 +122,38 @@ export function moveBalls(m: MatchState) {
 
     // Robots bulldoze low balls: the ball picks up the robot's speed where they touch.
     if (b.z < BUMPER_HEIGHT) {
-      for (const { robot, e } of robotBoxes) {
+      for (const { robot, e, c, s } of robotBoxes) {
         if (Math.abs(b.x - robot.x) > e.x + r || Math.abs(b.y - robot.y) > e.y + r) continue;
-        if (robot.job?.type === "collect" && robot.job.ball === b) continue;
-        const n = pushOutOfBox(b, robot.x - e.x - r, robot.y - e.y - r, robot.x + e.x + r, robot.y + e.y + r);
-        if (!n) continue;
-        if (n[0] !== 0) {
-          const push = robot.vx * n[0];
-          if (b.vx * n[0] < push + 0.2) b.vx = n[0] * (Math.max(0, push) * 1.15 + 0.2);
+        // Work in the robot's own frame (ahead, side), so a robot turned at an angle pushes with its real edges.
+        const dx = b.x - robot.x;
+        const dy = b.y - robot.y;
+        const ahead = dx * c + dy * s;
+        const side = -dx * s + dy * c;
+        const outA = robot.hl + r - Math.abs(ahead);
+        const outS = robot.hw + r - Math.abs(side);
+        if (outA <= 0 || outS <= 0) continue;
+        // Push it out the nearest edge. (nx, ny) points out of that edge.
+        let nx: number;
+        let ny: number;
+        if (outA < outS) {
+          const sign = ahead >= 0 ? 1 : -1;
+          nx = c * sign;
+          ny = s * sign;
+          b.x += nx * outA;
+          b.y += ny * outA;
         } else {
-          const push = robot.vy * n[1];
-          if (b.vy * n[1] < push + 0.2) b.vy = n[1] * (Math.max(0, push) * 1.15 + 0.2);
+          const sign = side >= 0 ? 1 : -1;
+          nx = -s * sign;
+          ny = c * sign;
+          b.x += nx * outS;
+          b.y += ny * outS;
+        }
+        const push = robot.vx * nx + robot.vy * ny;
+        const along = b.vx * nx + b.vy * ny;
+        if (along < push + 0.2) {
+          const add = Math.max(0, push) * 1.15 + 0.2 - along;
+          b.vx += nx * add;
+          b.vy += ny * add;
         }
       }
       bounceOffWalls(b, r);

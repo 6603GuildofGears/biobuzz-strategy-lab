@@ -1,14 +1,24 @@
 import { atan2, cos, sin } from "./mathx";
 import { onFloor, settled } from "./balls";
-import { driveTo, resetRoute } from "./driving";
-import { FIELD, FLOWERS, INWARD, angleDiff, cellOpening, dist, len, type Pt } from "./field";
-import { placeInFlower, pullFromBottom, topNectar } from "./flowers";
+import { driveTo, resetRoute, routeBlocked } from "./driving";
+import { FLOWERS, INWARD, angleDiff, cellOpening, dist, len, type Pt } from "./field";
+import { bottomNectar, placeInFlower, pullFromBottom, topNectar } from "./flowers";
+import { accelOf, intakeSpeed } from "./motion";
+import { fitsPose } from "./grab";
 import { freeSpot } from "./nav";
 import { AUTO_END, BALL_RADIUS, FLOWER_UNLOCK, POINTS } from "./rules";
 import { canLaunch, canShootFrom, launch, launcherHeading } from "./shooting";
 import { runDefense } from "./defense";
-import { log, ownNectar, tossBall, vary, type Ball, type Job, type MatchState, type Robot } from "./state";
-import { BUMP_ACCURACY, BUMP_DISTANCE, BUMP_REAIM, FLOWER_INTAKE_FACTOR, INTAKE_REACH, MOVING_SHOT_ACCURACY, MOVING_SHOT_SPEED } from "./tuning";
+import { log, ownNectar, tossBall, vary, type Job, type MatchState, type Robot } from "./state";
+import {
+  BUMP_ACCURACY,
+  BUMP_DISTANCE,
+  BUMP_REAIM,
+  FLOWER_INTAKE_FACTOR,
+  INTAKE_REACH,
+  MOVING_SHOT_ACCURACY,
+  MOVING_SHOT_SPEED,
+} from "./tuning";
 import type { Kind } from "./types";
 
 /**
@@ -33,7 +43,7 @@ export function setJob(r: Robot, job: Job | null) {
 const done = (r: Robot) => setJob(r, null);
 
 /** How long an action really takes this time: a little random, slower in a slow AUTO or while being pushed. */
-function actionTime(m: MatchState, r: Robot, secs: number) {
+export function actionTime(m: MatchState, r: Robot, secs: number) {
   const speed = (m.t < AUTO_END ? r.profile.autoSpeed : 1) * (1 - r.slow);
   return vary(m, secs) / Math.max(0.2, speed);
 }
@@ -78,23 +88,6 @@ const facing = (from: Pt, to: Pt) => atan2(to.y - from.y, to.x - from.x);
 
 // ---------- Picking up ----------
 
-const grabReach = (r: Robot, b: Ball) => Math.max(r.hw, r.hl) + BALL_RADIUS[b.k] + 0.05;
-
-/** Where the robot stops to intake ball b: just short of it, coming from where the robot is now. */
-export function grabSpot(r: Robot, b: Ball): Pt {
-  const d = dist(r, b);
-  const reach = grabReach(r, b);
-  const k = d <= reach ? 0 : (d - reach) / d;
-  const spot = freeSpot({ x: r.x + (b.x - r.x) * k, y: r.y + (b.y - r.y) * k }, Math.max(r.hw, r.hl), r.obs);
-  // Facing the ball at an angle makes the robot take up more room, so it can't get as close to a wall.
-  const face = facing(spot, b);
-  const c = Math.abs(cos(face));
-  const s = Math.abs(sin(face));
-  const ex = c * r.hl + s * r.hw;
-  const ey = s * r.hl + c * r.hw;
-  return { x: Math.min(FIELD - ex, Math.max(ex, spot.x)), y: Math.min(FIELD - ey, Math.max(ey, spot.y)) };
-}
-
 /**
  * Patience: a driver gives up on a job that has made no progress (no ball grabbed, no shot, nothing
  * placed) for this many seconds, and lets the brain choose again. A ball given up on is ignored for a while.
@@ -103,31 +96,82 @@ const PATIENCE = 8;
 const IGNORE_BALL_FOR = 15;
 const outOfPatience = (m: MatchState, r: Robot) => m.t - (r.progressAt ?? m.t) > PATIENCE;
 
-/** Can the intake reach this ball at all? (Not if it's jammed against a FLOWER, for example.) */
-export const canGrab = (r: Robot, b: Ball) => dist(grabSpot(r, b), b) <= grabReach(r, b) + INTAKE_REACH;
 
-function collect(m: MatchState, r: Robot, b: Ball) {
-  // Gone, or knocked rolling? Let the brain decide again (it waits for rolling balls to stop).
+/** Close to the ball but not getting it for this long (seconds), and the robot tries a different ball. */
+const STALLED_ON_BALL = 1.2;
+/** A tucked-in ball: the robot first stops this far (ft) back from its pose, lined up, then creeps in. */
+const LINE_UP_BACK = 0.8;
+
+/**
+ * Pick a ball up on the run: drive straight over it, intake first, slowing only to the speed the
+ * intake can swallow it at. The pickup itself happens in intake.ts once the ball is in the mouth.
+ * A ball next to a wall or FLOWER needs the robot lined up first (the pose from grab.ts).
+ */
+function collect(m: MatchState, r: Robot, job: Extract<Job, { type: "collect" }>) {
+  const b = job.ball;
+  // Picked up (by us or anyone), or knocked rolling? Let the brain decide again (it waits for rolling balls to stop).
   if (!m.balls.includes(b) || r.held.length >= r.cap || (onFloor(b) && !settled(b))) return done(r);
   const giveUp = () => {
     r.skip.set(b.id, m.t + IGNORE_BALL_FOR);
     done(r);
   };
   if (outOfPatience(m, r)) return giveUp();
-  const at = arrive(m, r, grabSpot(r, b), 0.15, facing(r, b));
-  if (at === "stuck") return giveUp();
-  if (at !== "there" || !timer(m, r, r.profile.intakeTime)) return;
-  if (!onFloor(b) || !canGrab(r, b)) return giveUp();
-  m.balls.splice(m.balls.indexOf(b), 1);
-  r.held.push(b.k);
-  done(r);
+  const vi = intakeSpeed(m, r);
+  const mouth = r.hl + BALL_RADIUS[b.k];
+  const d = dist(r, b);
+  let goal: Pt;
+  let limit: number;
+  if (job.pose.open) {
+    // Out in the open: aim a little past the ball so the robot doesn't brake before its intake gets there.
+    const face = facing(r, b);
+    r.face = face;
+    const ux = d > 1e-6 ? (b.x - r.x) / d : cos(r.heading);
+    const uy = d > 1e-6 ? (b.y - r.y) / d : sin(r.heading);
+    goal = freeSpot({ x: b.x + ux * 0.15, y: b.y + uy * 0.15 }, Math.max(r.hw, r.hl), r.obs);
+    // Slow down to intake speed by the time the intake reaches the ball: v² = vi² + 2·a·distance.
+    // (Planned with 60% of the braking, because the robot's speed lags a moment behind the driver.)
+    limit = Math.sqrt(vi * vi + 1.2 * accelOf(m, r) * Math.max(0, d - mouth - 0.15));
+    // Not lined up with the mouth yet? Creep, so the side of the frame doesn't knock it away.
+    const side = Math.abs(-(b.x - r.x) * sin(r.heading) + (b.y - r.y) * cos(r.heading));
+    if (side > r.intakeHalf * 0.7 && d < mouth + 1) limit = Math.min(limit, 0.5);
+  } else {
+    // Tucked in: stop just back from the pose, facing the right way, then creep straight in.
+    const { heading } = job.pose;
+    const ux = cos(heading);
+    const uy = sin(heading);
+    if (!job.staged) {
+      const back = { x: job.pose.x - ux * LINE_UP_BACK, y: job.pose.y - uy * LINE_UP_BACK };
+      const along = (r.x - job.pose.x) * ux + (r.y - job.pose.y) * uy;
+      const off = Math.abs(-(r.x - job.pose.x) * uy + (r.y - job.pose.y) * ux);
+      const linedUp = off < 0.15 && along < -0.2 && along > -LINE_UP_BACK - 0.4 && Math.abs(angleDiff(heading, r.heading)) < 0.12;
+      if (!linedUp) {
+        const at = arrive(m, r, fitsPose(m, r, back.x, back.y, heading) ? back : { x: job.pose.x - ux * 0.3, y: job.pose.y - uy * 0.3 }, 0.1, heading);
+        if (at === "stuck") giveUp();
+        return;
+      }
+      job.staged = true;
+      r.busyUntil = null;
+    }
+    r.face = heading;
+    goal = { x: job.pose.x + ux * 0.1, y: job.pose.y + uy * 0.1 };
+    limit = Math.min(vi, Math.max(0.5, Math.sqrt(1.2 * accelOf(m, r) * dist(r, job.pose))));
+  }
+  if (driveTo(m, r, goal, 0.05, undefined, limit) > GIVE_UP_WHEN_JAMMED) return giveUp();
+  // Right at the ball but it isn't coming in? Try another one.
+  if (d < mouth + INTAKE_REACH + 0.2 && len(r.vx, r.vy) < 0.3) {
+    r.busyUntil ??= m.t + STALLED_ON_BALL;
+    if (m.t >= r.busyUntil) return giveUp();
+  } else r.busyUntil = null;
 }
 
 function collectFromFlower(m: MatchState, r: Robot, fi: number) {
   const f = m.flowers[fi];
-  if (f.below <= 0 || r.held.length >= r.cap || outOfPatience(m, r)) return done(r);
-  const at = arrive(m, r, r.flowerSpots[fi], 0.15, facing(r.flowerSpots[fi], FLOWERS[fi]));
-  if (at === "stuck") return done(r);
+  if (f.below <= 0 || r.held.length >= r.cap) return done(r);
+  const at = outOfPatience(m, r) ? "stuck" : arrive(m, r, r.flowerSpots[fi], 0.15, facing(r.flowerSpots[fi], FLOWERS[fi]));
+  if (at === "stuck") {
+    r.avoidFlower[fi] = m.t + AVOID_FLOWER_FOR;
+    return done(r);
+  }
   if (at !== "there" || !timer(m, r, r.profile.intakeTime * FLOWER_INTAKE_FACTOR)) return;
   if (pullFromBottom(f)) r.held.push("P");
   done(r);
@@ -137,6 +181,10 @@ function collectFromFlower(m: MatchState, r: Robot, fi: number) {
 
 /** A robot jammed this long on the way to its shooting spot picks a different spot. */
 const SHOOT_SPOT_JAM = 1;
+/** Not lined up after this many seconds (someone keeps getting in the way) and the robot picks a different spot. */
+const SHOOT_APPROACH_PATIENCE = 4;
+/** After giving up on a FLOWER because it couldn't get there, stay away from it this long (seconds). */
+const AVOID_FLOWER_FOR = 6;
 
 function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
   const loaded = r.held.filter((k) => canLaunch(r, k));
@@ -148,6 +196,10 @@ function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
 
   // Step 1: get into position and line up (once per trip).
   if (!job.aimedAt) {
+    if (m.t - (r.progressAt ?? m.t) > SHOOT_APPROACH_PATIENCE) return done(r);
+    // Held up on the way (a robot in the path, or just slow going) but already able to score from here? Shoot from here.
+    const delayed = r.stuckTime > 0.3 || m.t - (r.progressAt ?? m.t) > 2.5 || routeBlocked(m, r, job.spot);
+    if (delayed && dist(r, job.spot) > 0.3 && canShootFrom(m, r, r)) job.spot = { x: r.x, y: r.y };
     const at = arrive(m, r, job.spot, 0.2, launcherHeading(r, job.spot, opening));
     if (at === "stuck" || (at === "driving" && r.stuckTime > SHOOT_SPOT_JAM)) return done(r);
     if (onTheMove) {
@@ -158,7 +210,12 @@ function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
         return;
       }
     } else if (at !== "there") return;
-    if (!canShootFrom(m, r, r)) return done(r); // pick a spot it can actually score from
+    if (!canShootFrom(m, r, r)) {
+      // Stopped just short of where it can score (pushed, or a tank that can't slide over): keep closing in.
+      r.arrivedAt = null;
+      driveTo(m, r, job.spot, 0.05);
+      return;
+    }
     if (!timer(m, r, r.profile.alignTime)) return;
     job.aimedAt = { x: r.x, y: r.y };
     job.nextShot = m.t;
@@ -182,7 +239,7 @@ function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
     job.nextShot = Math.max(job.nextShot, m.t + actionTime(m, r, r.profile.alignTime * BUMP_REAIM));
     job.bumped = true;
   }
-  if (m.t + 1e-9 < job.nextShot) return;
+  if (m.t + 1e-9 < job.nextShot || m.t + 1e-9 < r.intakeBusyUntil) return;
 
   if (job.fired === 0) {
     m.stats[r.alliance].volleys++;
@@ -210,18 +267,24 @@ function shoot(m: MatchState, r: Robot, job: Extract<Job, { type: "shoot" }>) {
 function nextForFlower(m: MatchState, r: Robot, fi: number, placed: number): Kind | null {
   const owner = topNectar(m.flowers[fi].volume);
   const own = ownNectar(r.alliance);
-  const cap = r.role.flowerMode === "cap";
-  if (owner !== r.alliance && r.held.includes(own) && !(cap && placed > 0)) return own;
-  if (owner === r.alliance && !cap && r.held.includes("P")) return "P";
+  const mode = r.role.flowerMode;
+  if (mode === "claim") return bottomNectar(m.flowers[fi].volume) === null && placed === 0 && r.held.includes(own) ? own : null;
+  if (owner !== r.alliance && r.held.includes(own) && !(mode === "cap" && placed > 0)) return own;
+  if (owner === r.alliance && mode === "fill" && r.held.includes("P")) return "P";
   return null;
 }
 
 function placeFlower(m: MatchState, r: Robot, job: Extract<Job, { type: "flower" }>) {
-  if (m.t < FLOWER_UNLOCK || outOfPatience(m, r)) return done(r); // G410: NECTAR only in the last 60 s
+  if (m.t < FLOWER_UNLOCK) return done(r); // G410: NECTAR only in the last 60 s
   const f = m.flowers[job.fi];
   const spot = r.flowerSpots[job.fi];
+  const giveUp = () => {
+    r.avoidFlower[job.fi] = m.t + AVOID_FLOWER_FOR;
+    done(r);
+  };
+  if (outOfPatience(m, r)) return giveUp();
   const at = arrive(m, r, spot, 0.15, facing(spot, FLOWERS[job.fi]));
-  if (at === "stuck") return done(r);
+  if (at === "stuck") return giveUp();
   if (at !== "there") return;
   if (!job.linedUp) {
     if (!timer(m, r, r.profile.alignTime)) return;
@@ -256,7 +319,7 @@ export function runJob(m: MatchState, r: Robot) {
   r.progressAt ??= m.t;
   switch (job.type) {
     case "collect":
-      return collect(m, r, job.ball);
+      return collect(m, r, job);
     case "collectFlower":
       return collectFromFlower(m, r, job.fi);
     case "shoot":

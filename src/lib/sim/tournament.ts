@@ -43,6 +43,22 @@ export interface StrategyStats {
   breakdown: Record<BreakdownKey, number>;
 }
 
+/**
+ * Qualification ranking order (Table 13-1): RANKING SCORE (average RP) first, then average MATCH
+ * points not counting points from fouls, then average TIPS, then average AUTO points.
+ */
+export function byQualificationRank(a: StrategyStats, b: StrategyStats): number {
+  const withoutFouls = (s: StrategyStats) => s.avgScore - s.breakdown.foulCredit;
+  const auto = (s: StrategyStats) => s.breakdown.leave + s.breakdown.autoPark + s.breakdown.autoTips;
+  return b.avgRP - a.avgRP || withoutFouls(b) - withoutFouls(a) || b.avgTips - a.avgTips || auto(b) - auto(a);
+}
+
+/** Playoffs have no RP: alliances advance by winning (13.7). Win rate first (a tie counts half), then point margin. */
+export function byPlayoffRank(a: StrategyStats, b: StrategyStats): number {
+  const winRate = (s: StrategyStats) => (s.wins + s.ties * 0.5) / s.matches;
+  return winRate(b) - winRate(a) || b.avgMargin - a.avgMargin;
+}
+
 /** One match on the schedule: strategy `red` (by index) on the red side against strategy `blue`. */
 export interface ScheduledMatch {
   index: number;

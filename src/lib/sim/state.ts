@@ -1,5 +1,6 @@
 import { cos, sin } from "./mathx";
-import { GARDEN, FLOWERS, START_OPEN_END, flowerSpot, parkSpot, startPose, type HiveEnd, type Pt, type Rect } from "./field";
+import { CENTER, FIELD, GARDEN, FLOWERS, START_OPEN_END, flowerSpot, inflate, parkSpot, startPose, type HiveEnd, type Pt, type Rect } from "./field";
+import type { GrabPose } from "./grab";
 import { inflatedObstacles } from "./nav";
 import { mulberry32, type Rng } from "./rng";
 import { BALL_RADIUS, MAX_HELD, NECTAR_IN_ALLIANCE_AREA, NECTAR_IN_CELL, POLLEN_PER_FLOWER, POLLEN_PER_GARDEN, PRELOAD_PER_ROBOT } from "./rules";
@@ -44,6 +45,8 @@ export interface Shot {
   t1: number;
   /** Which end was open when the shot was fired. */
   end: HiveEnd;
+  /** Height (ft) it left the launcher. */
+  h0: number;
 }
 
 export interface Hive {
@@ -73,7 +76,8 @@ export interface FlowerTube {
  * something to do once it gets there. jobs.ts carries them out, brain.ts picks them.
  */
 export type Job =
-  | { type: "collect"; ball: Ball }
+  /** `pose`: how the robot will sit to get the ball in its intake (grab.ts). `staged`: lined up on it, now creeping in. */
+  | { type: "collect"; ball: Ball; pose: GrabPose; staged: boolean }
   | { type: "collectFlower"; fi: number }
   /**
    * `aimedAt`: where the robot finished lining up (null until then). `nextShot`: when it can fire next.
@@ -83,8 +87,9 @@ export type Job =
   | { type: "flower"; fi: number; linedUp: boolean; placed: number }
   | { type: "park" }
   | { type: "parked" }
-  /** Guard the opponent's shooting lane, or push on one `target` robot that came to shoot. */
-  | { type: "defend"; target: Robot | null; until: number }
+  /** Guard the opponent's shooting area, or get in front of one `target` robot that's about to shoot. */
+  /** `guard`: where the defender is heading, updated every DEFENDER_REACTION seconds (drivers don't react instantly). */
+  | { type: "defend"; target: Robot | null; until: number; guard: Pt | null; guardAt: number }
   | { type: "wait"; spot: Pt | null; until: number; why: string };
 
 export interface Robot {
@@ -98,10 +103,18 @@ export interface Robot {
   hl: number;
   /** How many elements it can hold. */
   cap: number;
+  /** Half the intake's width (ft). The intake is centered on the front. */
+  intakeHalf: number;
+  /** Height with everything extended (ft). */
+  height: number;
   /** Pushing strength: weight times traction. */
   push: number;
-  /** Obstacles grown by the robot's size, so the planner can treat the robot as a point. */
+  /**
+   * Obstacles grown by the robot's size, so the planner can treat the robot as a point. During AUTO this
+   * also includes the opponent's half of the FIELD (G402), and it switches to `teleopObs` when AUTO ends.
+   */
   obs: Rect[];
+  teleopObs: Rect[];
   parkSpot: Pt;
   flowerSpots: Pt[];
 
@@ -112,12 +125,16 @@ export interface Robot {
   vy: number;
   /** Radians. 0 faces +x (toward blue). The intake is on the front. */
   heading: number;
+  /** cos and sin of `heading`, remembered for the heading `h` (motion.ts, headingTrig). */
+  trig: { h: number; c: number; s: number };
   /** What the driver asks for this step: a velocity, and a direction to face (or null for "any"). */
   cmdx: number;
   cmdy: number;
   face: number | null;
 
   held: Kind[];
+  /** When the intake finishes pulling in the last ball it touched. The robot can't launch until then. */
+  intakeBusyUntil: number;
   job: Job | null;
   /** When the current timed action (intake, aim, launch, place) finishes, or null if not doing one. */
   busyUntil: number | null;
@@ -127,6 +144,8 @@ export interface Robot {
   progressAt: number | null;
   /** Balls this robot gave up on, and until when it ignores them (ball id → time). */
   skip: Map<number, number>;
+  /** Until when it stays away from each FLOWER after giving up on it (someone else was in the way). */
+  avoidFlower: number[];
   /** When the current collect-then-shoot trip started. */
   tripStart: number;
 
@@ -135,6 +154,8 @@ export interface Robot {
   pathGoal: Pt | null;
   pathAt: number;
   stuckTime: number;
+  /** Until when route planning also steers around other robots (after a jam). */
+  aroundRobotsUntil: number;
   detour: { p: Pt; until: number } | null;
 
   autoWorks: boolean;
@@ -146,6 +167,10 @@ export interface Robot {
 
   // Defense and the G421 PIN count.
   pinTime: number;
+  /** The opponent this robot's current PIN count is against (G421), and where both were when it started. */
+  pinVictim: Robot | null;
+  pinFrom: { target: Pt; defender: Pt } | null;
+  /** Seconds the robots have been 2 ft apart, or 2 ft from where the PIN started (G421.A and B). */
   apartTime: number;
   backOffUntil: number;
 }
@@ -210,7 +235,13 @@ export function tossBall(m: MatchState, k: Kind, p: Pt, z: number, sMin: number,
   spawnBall(m, k, p, z, cos(angle) * speed, sin(angle) * speed, 0);
 }
 
-const emptyStats = (): PlayStats => ({ shots: 0, hits: 0, shotDistance: 0, volleys: 0, volleyElements: 0, idleTime: 0, fouls: 0 });
+const emptyStats = (): PlayStats => ({ shots: 0, hits: 0, shotDistance: 0, blocked: 0, volleys: 0, volleyElements: 0, idleTime: 0, fouls: 0 });
+
+/** During AUTO each alliance stays on its own half: columns A to C are red, D to F are blue (G402). */
+const OPPONENT_HALF: Record<Alliance, Rect> = {
+  red: { x0: CENTER, y0: -1, x1: FIELD + 1, y1: FIELD + 1 },
+  blue: { x0: -1, y0: -1, x1: CENTER, y1: FIELD + 1 },
+};
 
 /** 6 in to 18 in, converted to half-size in feet. */
 const halfFt = (inches: number) => Math.min(18, Math.max(6, inches)) / 24;
@@ -276,8 +307,11 @@ export function createMatch(input: MatchInput): MatchState {
         hw,
         hl,
         cap,
+        intakeHalf: Math.min(1, Math.max(0.25, profile.intakeWidth ?? 1)) * hw,
+        height: Math.min(29, Math.max(10, profile.heightIn ?? 18)) / 12,
         push: Math.max(5, profile.weightLb) * TRACTION[profile.drivetrain],
-        obs: inflatedObstacles(Math.max(hw, hl)),
+        obs: [...inflatedObstacles(Math.max(hw, hl)), inflate(OPPONENT_HALF[a], Math.max(hw, hl) + 0.03)],
+        teleopObs: inflatedObstacles(Math.max(hw, hl)),
         parkSpot: parkSpot(a, slot, hw, hl),
         flowerSpots: FLOWERS.map((_, fi) => flowerSpot(fi, hl)),
         x: pose.x,
@@ -285,26 +319,32 @@ export function createMatch(input: MatchInput): MatchState {
         vx: 0,
         vy: 0,
         heading: pose.heading,
+        trig: { h: NaN, c: 1, s: 0 },
         cmdx: 0,
         cmdy: 0,
         face: null,
         held: [],
+        intakeBusyUntil: 0,
         job: null,
         busyUntil: null,
         arrivedAt: null,
         progressAt: null,
         skip: new Map(),
+        avoidFlower: FLOWERS.map(() => 0),
         tripStart: 0,
         path: [],
         pathGoal: null,
         pathAt: -Infinity,
         stuckTime: 0,
+        aroundRobotsUntil: -Infinity,
         detour: null,
         autoWorks: rng() < profile.autoReliability,
         left: false,
         autoParked: false,
         slow: 0,
         pinTime: 0,
+        pinVictim: null,
+        pinFrom: null,
         apartTime: 0,
         backOffUntil: 0,
       };

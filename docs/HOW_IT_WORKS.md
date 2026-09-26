@@ -15,6 +15,7 @@ every 0.1 s:
        - if it has nothing to do, the BRAIN picks a job       brain.ts
        - it works on that job: drive, turn, wait, act          jobs.ts, driving.ts
   3. robots and balls move and bump into things              motion.ts, balls.ts
+     intakes pull in balls the robots drive over             intake.ts
   4. shots that reach the HIVE go in or bounce off           hive.ts
 after the buzzer:
   let everything come to rest, then add up the score         scoring.ts
@@ -37,7 +38,9 @@ The loop itself is in `engine.ts`, in the function `simulateMatch`. It's short, 
 | `engine.ts` | The main loop (`simulateMatch`). |
 | `brain.ts` | How a robot **decides** what to do next. The most interesting file. |
 | `defense.ts` | Everything about defense and the 3-second PIN rule. |
-| `jobs.ts` | How a robot **carries out** a job: drive there, wait for the intake/aim/launch, then do it. |
+| `intake.ts` | Picking balls up on the run: any wanted ball that enters the intake's mouth comes in. |
+| `grab.ts` | Can the intake reach a ball at all (a ball tucked against a FLOWER and the wall may be out of reach), and how to line up for it. |
+| `jobs.ts` | How a robot **carries out** a job: drive there, wait for the aim/launch, then do it. |
 | `driving.ts` | Steering: follow a route, swerve around robots, back out of jams. |
 | `nav.ts` | Route planning around obstacles (Dijkstra's shortest-path algorithm on obstacle corners). |
 | `motion.ts` | Robot physics: acceleration, turning, tank vs mecanum vs swerve, and pushing. |
@@ -60,12 +63,12 @@ When a robot has no job, `chooseJob` in `brain.ts` runs. It goes down a short li
 
 A **job** is one small task with a place to go and something to do there:
 
-- `collect`: drive to a ball and intake it
+- `collect`: drive over a ball, intake first, slowing only as much as the intake needs
 - `collectFlower`: pull a POLLEN out of the bottom of a FLOWER
 - `shoot`: drive to a shooting spot, aim, and launch everything
 - `flower`: drive to a FLOWER and place elements in the top
 - `park` / `parked`: go to the LOADING ZONE and stay
-- `defend`: guard the opponent's shooting lane
+- `defend`: get in front of the opponent that's about to shoot, or wait in their shooting area
 - `wait`: nothing useful to do right now
 
 ### 2. How the brain decides: points per second
@@ -77,9 +80,9 @@ A shot's expected points are: *chance it goes in* × *its share of a tip*. A tip
 **Example.** The robot holds 2 POLLEN. It started this trip 6 s ago, and getting to its shooting spot, aiming and firing would take 3 more seconds. It shoots 75% from there.
 
 - If it shoots now, this trip earns 2 × 0.75 × 2.67 = 4.0 points in 6 + 3 = 9 s, or **0.44 points per second**.
-- There's a POLLEN 1 s out of the way. Grabbing and firing it takes 1 s + 1.5 s (intake) + 0.6 s (launch) = 3.1 extra seconds for 0.75 × 2.67 = 2.0 points, or **0.65 points per second**.
+- There's a POLLEN 1 s out of the way. Grabbing and firing it takes 1 s + 0.3 s (slowing down to drive over it) + 0.25 s (launch) = 1.55 extra seconds for 0.75 × 2.67 = 2.0 points, or **1.3 points per second**.
 
-0.65 beats 0.44, so it grabs the ball. If the nearest ball were far away, shooting now would win. This one rule replaced several hand-picked numbers in the old version, and robots now shoot with nearly full loads.
+1.3 beats 0.44, so it grabs the ball. If the nearest ball were far away, shooting now would win. This one rule replaced several hand-picked numbers in the old version, and robots now shoot with nearly full loads.
 
 The same idea picks **where** to shoot. `bestShot` tries a grid of spots in front of the upward CELL. Close spots are more accurate, and far spots are quicker to reach. It picks the spot with the most points per second, and skips spots another robot is sitting on.
 
@@ -88,16 +91,22 @@ The same idea picks **where** to shoot. `bestShot` tries a grid of spots in fron
 `runJob` in `jobs.ts` runs every 0.1 s. Every job follows the same pattern:
 
 1. `arrive`: drive to the spot and turn to face the right way (`driveTo` in `driving.ts` does the steering).
-2. `timer`: wait for the intake, aim or launch to finish. Each timed action randomly takes up to 15% longer or shorter, because drivers aren't perfectly consistent.
+2. `timer`: wait for the aim, launch or FLOWER placement to finish. Each timed action randomly takes up to 15% longer or shorter, because drivers aren't perfectly consistent.
 
 Shooting is the one job with two stages: line up once (the align time), then fire everything, one element every launch time. A robot with "Shoot while driving" turned on does both while it's still moving toward its spot, as soon as it's in range and pointed at the CELL. If another robot bumps it more than 0.3 ft while it's shooting, it takes a quick moment to correct (a quarter of the align time) and its next shot is a little less accurate. The numbers are in `tuning.ts` (`BUMP_DISTANCE`, `BUMP_REAIM`, `BUMP_ACCURACY`).
-3. Do it: take the ball, launch, place. Then the job is done and the brain picks the next one.
+3. Do it: launch, place. Then the job is done and the brain picks the next one.
+
+Picking up is different: robots don't stop for balls. A `collect` job drives straight at the ball, intake first, and slows down only to the speed the intake can swallow a ball (about 1 ft per intake time, `INTAKE_DEPTH` in `tuning.ts`). Every step, `intakeBalls` in `intake.ts` pulls in any ball sitting in a running intake's mouth, which is the Intake width part of the front. So a robot on its way somewhere else also scoops up balls it happens to drive over, and a wide intake picks up more of them. The ball takes one intake time to come all the way in, and the robot can't launch until it has.
+
+Balls against a wall or a FLOWER are harder. `grabPose` in `grab.ts` looks for a way to sit (angle and position) where the frame fits and the ball is inside the intake. A ball tucked between a FLOWER and the wall is often closer to the FLOWER than half the robot's width, so only a wide intake can reach it. The brain skips balls with no pose. For the rest, the robot stops lined up just back from the pose, then creeps straight in.
+
+**Traffic.** Robots don't plan around each other in advance, but the brain charges extra time for a ball or shooting spot whose straight route runs through another robot. A robot that jams plans a route around the robots in its way (unless that's much longer than pushing through), then backs off sideways if it's still stuck. A shooter held up on the way to its spot shoots from where it is if it can already score from there. Only one robot fits at a FLOWER, so robots skip a FLOWER someone else is using and stay away for a few seconds from one they gave up on.
 
 ### 4. The robot moves
 
 `moveRobots` in `motion.ts` turns the driver's command into motion. The robot can only change speed by its acceleration each second, and turns at its drivetrain's rate. A **tank drive** can only move the way it's pointing, so it keeps only the part of the command that lines up with the robot. Mecanum and swerve can move in any direction.
 
-`collideRobots` keeps robots out of each other, the walls, the HIVE frame and the FLOWERS. When two robots overlap, both get pushed apart, and the one with more weight × traction moves less.
+`collideRobots` keeps robots out of each other, the walls, the HIVE frame and the FLOWERS. Each robot is a rectangle turned to its heading, and `boxContact` finds overlaps with the separating axis test (two rectangles overlap only if they overlap along all four of their edge directions). So a robot turned 45° only takes up the room its frame really does. During AUTO it also keeps each robot on its own half (G402), and the route planner treats the opponent's half as an obstacle until AUTO ends (`obs` and `teleopObs` on the robot). When two robots overlap, both get pushed apart, and the one with more weight × traction moves less.
 
 ### 5. The shot flies
 
@@ -122,6 +131,14 @@ A FLOWER (`flowers.ts`) is a tube. Balls stack up from the bottom. POLLEN can sl
 ### 8. The end
 
 Robots park in time because `parkDue` in `brain.ts` checks every step whether it's time to head to the LOADING ZONE. After the buzzer, `settle` in `engine.ts` keeps the physics running (robots unpowered) until everything comes to rest. Shots already in the air still count, just like the manual says. Then `scoring.ts` adds everything up.
+
+### 9. Defense
+
+A defender (`defense.ts`) works out which opponent will shoot soonest. If that robot is headed to a shooting spot, the defender drives to the spot right in front of it, between it and the CELL. Otherwise it waits in the middle of the opponent's shooting area. It updates where it's going only every 0.3 s, because drivers don't react instantly.
+
+Why stand in front? A shot leaves the launcher (about 14 in up, the Launcher height slider) and climbs steeply, so for its first foot or so it's still low enough to hit a robot extended to the legal 29 in. `blockerOf` in `shooting.ts` follows the ball's path and checks for that. Shooters keep shooting through a defender, but each blocked shot is knocked down with the chance on the "Blocked shot knocked down" slider (60% by default), and it drops back onto the floor. A higher launcher clears the defender sooner. The shooter's spot search prefers spots no opponent is blocking. Being pushed slows a robot down and throws its aim off too (the Defense push effect slider).
+
+The PIN count follows G421 and applies to every robot, not only defenders. A robot is PINNED when it's pressed against a wall or FIELD element, trying to drive out past an opponent, can't move, and that opponent is pushing on it. (Out in the open a robot can turn aside, so a shove there isn't a PIN, and two trapped robots shoving each other don't count either.) The count ends once the robots have been 2 ft apart for 3 s, or either robot has been 2 ft from where the PIN started for 3 s. Any robot whose count reaches 2.3 s backs off 2 ft (`backOff`) before it would draw the 20-point MAJOR FOUL.
 
 ## Same seed, same match, everywhere
 

@@ -1,14 +1,15 @@
 import { restingPoint, settled } from "./balls";
 import { chooseDefenseJob } from "./defense";
-import { travelTime } from "./driving";
+import { routeBlocked, travelTime } from "./driving";
 import { CENTER, FIELD, GARDEN, NECTAR_DROP, angleDiff, cellOpening, dist, inRect, type Pt } from "./field";
-import { planFlower, topNectar } from "./flowers";
+import { bottomNectar, planFlower, topNectar } from "./flowers";
 import { weightInFlight } from "./hive";
-import { topSpeed, turnRateOf } from "./motion";
+import { accelOf, intakeSpeed, topSpeed, turnRateOf } from "./motion";
 import { freeSpot, insideRect, pathLength } from "./nav";
 import { AUTO_END, BALL_RADIUS, FLOWER_UNLOCK, MATCH_LENGTH, POINTS } from "./rules";
-import { canLaunch, canShootFrom, effectiveRange, launcherHeading, shotAccuracy } from "./shooting";
-import { canGrab } from "./jobs";
+import { blockerOf, canLaunch, canShootFrom, effectiveRange, launcherHeading, shotAccuracy } from "./shooting";
+import { grabPose } from "./grab";
+import { atan2 } from "./mathx";
 import { nectarOwner, opponent, ownNectar, teammate, weightOf, type Ball, type Job, type MatchState, type Robot } from "./state";
 import { FLOWER_INTAKE_FACTOR, MIN_SHOT_DISTANCE } from "./tuning";
 import type { Kind } from "./types";
@@ -102,10 +103,12 @@ export function bestShot(m: MatchState, r: Robot, load: Kind[]): ShotPlan | null
   const size = Math.max(r.hw, r.hl);
   const mate = teammate(m, r);
   const mateSpot = mate.job?.type === "shoot" ? mate.job.spot : null;
-  // A spot is taken if another robot is sitting on it, or the teammate is already headed there.
+  // A spot is taken if another robot is sitting on it, the teammate is already headed there,
+  // or an opponent is standing where it would block shots from there.
   const taken = (p: Pt) =>
     m.robots.some((o) => o !== r && dist(o, p) < size + Math.max(o.hw, o.hl)) ||
-    (mateSpot !== null && dist(mateSpot, p) < size + Math.max(mate.hw, mate.hl));
+    (mateSpot !== null && dist(mateSpot, p) < size + Math.max(mate.hw, mate.hl)) ||
+    blockerOf(m, r, p, true) !== null;
 
   // Where it is now, plus a grid of spots in front of the opening: 5 distances × 7 side-to-side positions.
   const nearest = MIN_SHOT_DISTANCE + SPOT_SLACK + 0.05;
@@ -124,7 +127,8 @@ export function bestShot(m: MatchState, r: Robot, load: Kind[]): ShotPlan | null
     if (!fitsAt(m, r, spot) || !workable(spot)) continue;
     const free = !taken(spot);
     const d = dist(spot, opening);
-    const drive = travelTime(m, r, spot);
+    // An opponent in the way means pushing through or going around it.
+    const drive = travelTime(m, r, spot) + (routeBlocked(m, r, spot) ? 4 : 0);
     // A robot that shoots while driving lines up on the way, so aiming overlaps the drive.
     const onTheMove = r.profile.shootOnTheMove && r.profile.drivetrain !== "tank";
     const aim = onTheMove ? Math.max(0, r.profile.alignTime - drive) : r.profile.alignTime;
@@ -143,6 +147,16 @@ interface Pickup {
   /** Extra seconds this pickup adds to the trip. */
   extra: number;
   rate: number;
+}
+
+/**
+ * Extra seconds a pickup costs besides the detour: slowing to the speed the intake can swallow a ball
+ * at and speeding back up, plus the time to launch it later. (Robots pick balls up on the run.)
+ */
+function pickupTime(m: MatchState, r: Robot) {
+  const v = topSpeed(m, r);
+  const slower = v - intakeSpeed(m, r);
+  return (slower * slower) / (accelOf(m, r) * v) + r.profile.launchTime;
 }
 
 /** Taking a ball out of a GARDEN changes GARDEN points: -1 from yours, +1 (for you) from theirs. */
@@ -189,19 +203,27 @@ function bestPickup(m: MatchState, r: Robot, valueOf: (k: Kind) => number, spot:
   let best: Pickup | null = null;
   const consider = (job: Job, at: Pt, value: number, handling: number) => {
     if (value <= 0 || !onOwnHalf(m, r, at)) return;
-    const extra = (pathLength(r, at, r.obs) + pathLength(at, spot, r.obs) - direct) / speed + handling;
+    // A robot in the way means waiting, pushing through or going around it.
+    const traffic = routeBlocked(m, r, at, true) ? 2 : 0;
+    const extra = (pathLength(r, at, r.obs) + pathLength(at, spot, r.obs) - direct) / speed + handling + traffic;
     const rate = value / Math.max(0.3, extra);
     if (!best || rate > best.rate) best = { job, value, extra, rate };
   };
   for (const b of m.balls) {
-    if (!settled(b) || !available(m, r, b) || !canGrab(r, b)) continue;
+    if (!settled(b) || !available(m, r, b)) continue;
     const v = valueOf(b.k);
-    if (v > 0) consider({ type: "collect", ball: b }, b, v + gardenValue(r, b), r.profile.intakeTime + r.profile.launchTime);
+    if (v <= 0) continue;
+    // Skip balls the intake can't reach, like one wedged between a FLOWER and the wall.
+    const pose = grabPose(m, r, b, atan2(b.y - r.y, b.x - r.x));
+    if (!pose) continue;
+    // Lining up on a tucked-in ball costs extra time.
+    const lineUp = pose.open ? 0 : 1 + r.profile.alignTime;
+    consider({ type: "collect", ball: b, pose, staged: false }, b, v + gardenValue(r, b), pickupTime(m, r) + lineUp);
   }
   const pollen = valueOf("P");
   if (pollen > 0) {
     m.flowers.forEach((f, fi) => {
-      if (f.below <= 0) return;
+      if (f.below <= 0 || flowerTaken(m, r, fi)) return;
       const handling = r.profile.intakeTime * FLOWER_INTAKE_FACTOR + r.profile.launchTime;
       consider({ type: "collectFlower", fi }, r.flowerSpots[fi], pollen + flowerPullValue(m, r, fi), handling);
     });
@@ -261,15 +283,29 @@ function oneVolleyFromTip(m: MatchState, r: Robot) {
 
 // ---------- FLOWERS ----------
 
-const inFlowerPhase = (m: MatchState, r: Robot) =>
+export const inFlowerPhase = (m: MatchState, r: Robot) =>
   !inAuto(m) && r.role.flowerStart !== null && timeLeft(m) <= Math.min(MATCH_LENGTH - FLOWER_UNLOCK, r.role.flowerStart);
 
 /** The FLOWER visit that earns the most points per second with what the robot holds now. */
+/**
+ * Is someone else using this FLOWER (any robot working it or sitting where this robot would stand),
+ * or did this robot just give up on it? Robots stand in the same spot to use a FLOWER, so only one fits.
+ */
+function flowerTaken(m: MatchState, r: Robot, fi: number) {
+  if (r.avoidFlower[fi] > m.t) return true;
+  const spot = r.flowerSpots[fi];
+  const size = Math.max(r.hw, r.hl);
+  return m.robots.some(
+    (o) =>
+      o !== r &&
+      (((o.job?.type === "flower" || o.job?.type === "collectFlower") && o.job.fi === fi) || dist(o, spot) < size + Math.max(o.hw, o.hl)),
+  );
+}
+
 function bestFlowerTrip(m: MatchState, r: Robot) {
   let best: { fi: number; rate: number; time: number } | null = null;
-  const mateJob = teammate(m, r).job;
   for (let fi = 0; fi < r.flowerSpots.length; fi++) {
-    if (mateJob?.type === "flower" && mateJob.fi === fi) continue; // the teammate is already working this FLOWER
+    if (flowerTaken(m, r, fi)) continue;
     const plan = planFlower(m, r.alliance, fi, r.held, r.role.flowerMode);
     if (plan.value <= 0) continue;
     const time = travelTime(m, r, r.flowerSpots[fi]) + r.profile.alignTime + plan.used * r.profile.flowerTime;
@@ -281,17 +317,23 @@ function bestFlowerTrip(m: MatchState, r: Robot) {
 
 function flowerJob(m: MatchState, r: Robot): Job | null {
   const own = ownNectar(r.alliance);
-  const cap = r.role.flowerMode === "cap";
+  const mode = r.role.flowerMode;
+  // Capping and claiming carry only NECTAR.
+  const cap = mode !== "fill";
   const heldN = r.held.filter((k) => k === own).length;
   const heldP = r.held.filter((k) => k === "P").length;
   const spare = timeLeft(m) - parkReserve(m, r);
+  // Claiming: one NECTAR for every FLOWER nobody has put NECTAR in yet. Once they're all claimed, back to the HIVE.
+  const unclaimed = m.flowers.filter((f) => bottomNectar(f.volume) === null && f.volume.length < m.settings.flowerCapacity).length;
+  if (mode === "claim" && unclaimed === 0) return null;
+  const nectarLoad = mode === "claim" ? Math.min(r.cap, unclaimed) : r.cap;
 
   const trip = bestFlowerTrip(m, r);
-  if (trip && (r.held.length >= r.cap || spare < trip.time + 3 || (cap && heldN >= r.cap))) return visitFlower(trip.fi);
+  if (trip && (r.held.length >= r.cap || spare < trip.time + 3 || (cap && heldN >= nectarLoad))) return visitFlower(trip.fi);
 
-  // What to carry: capping takes only NECTAR. Building takes one NECTAR to claim, then POLLEN to fill.
-  const claimable = m.flowers.some((_, fi) => planFlower(m, r.alliance, fi, [own], r.role.flowerMode).value >= POINTS.bottomNectar);
-  const wantN = cap ? r.cap : heldN === 0 && claimable ? 1 : 0;
+  // What to carry: building takes one NECTAR to claim, then POLLEN to fill.
+  const claimable = m.flowers.some((_, fi) => planFlower(m, r.alliance, fi, [own], mode).value >= POINTS.bottomNectar);
+  const wantN = cap ? nectarLoad : heldN === 0 && claimable ? 1 : 0;
   const wantP = cap ? 0 : r.cap - Math.max(heldN, wantN);
   const toward = trip ? r.flowerSpots[trip.fi] : r;
   // Full, but not with what it needs? Returning null sends it to the HIVE to shoot the rest and make room.

@@ -11,14 +11,18 @@ export interface RobotProfile {
   driveSpeed: number;
   /** How fast the robot reaches top speed and brakes, in ft/s². */
   acceleration: number;
-  /** Seconds to intake one element once the robot is at it. */
+  /** Seconds for the intake to pull one element in. The robot drives over balls no faster than its intake can swallow them. */
   intakeTime: number;
+  /** How much of the front the intake covers (0.25 to 1). A full-width intake picks up balls it wasn't aiming for. */
+  intakeWidth: number;
   /** Seconds between launches. */
   launchTime: number;
   /** Longest shot (ft) the launcher is built for. Shot speed can make it shorter. */
   launchRange: number;
   /** Launcher exit speed in ft/s. Sets how far a ball can fly up to the CELL. */
   shotSpeed: number;
+  /** Height (in) the ball leaves the launcher. Higher clears a defender sooner and needs less climb to the CELL. */
+  launchHeightIn: number;
   /** Chance a POLLEN shot goes in, from close range. */
   pollenAccuracy: number;
   /** Chance a NECTAR shot goes in, from close range. */
@@ -39,6 +43,8 @@ export interface RobotProfile {
   widthIn: number;
   /** Frame length in inches (front to back). */
   lengthIn: number;
+  /** Height in inches with everything extended (the rules allow 29 in). A tall robot in front of a shooter can block shots. */
+  heightIn: number;
   /** Robot weight in pounds, used when robots push each other. */
   weightLb: number;
   drivetrain: Drivetrain;
@@ -51,7 +57,7 @@ export interface RobotProfile {
 }
 
 export type Ammo = "all" | "pollen";
-export type FlowerMode = "fill" | "cap";
+export type FlowerMode = "fill" | "cap" | "claim";
 
 /** What one robot does during the match. */
 export interface RoleConfig {
@@ -60,7 +66,10 @@ export interface RoleConfig {
   ammo: Ammo;
   /** Seconds left in the MATCH when the robot switches to FLOWERS (at most 60), or null to never. */
   flowerStart: number | null;
-  /** fill = claim a FLOWER with NECTAR then stack POLLEN on top; cap = NECTAR only, to steal ownership. */
+  /**
+   * fill = claim a FLOWER with NECTAR then stack POLLEN on top; cap = NECTAR only, to steal ownership;
+   * claim = one NECTAR in each FLOWER nobody has claimed yet (the bottom NECTAR bonus), then back to the HIVE.
+   */
   flowerMode: FlowerMode;
   /** Play defense on the opponents during TELEOP instead of scoring. */
   defend: boolean;
@@ -88,6 +97,8 @@ export interface GameSettings {
   flowerCapacity: number;
   /** How much an opponent is slowed while a defender is pressed against it (0 to 1). */
   defenseEffect: number;
+  /** Chance a shot is knocked down when a robot is standing in its path (0 to 1). */
+  blockChance: number;
   /** Seconds the HIVE takes to rotate before a tipped CELL empties. */
   tipSpinTime: number;
   /** Height (ft) elements fall from when a tipped CELL empties. */
@@ -121,6 +132,8 @@ export interface PlayStats {
   hits: number;
   /** Sum of shot distances (ft). Divide by shots for the average. */
   shotDistance: number;
+  /** Shots knocked down by a robot standing in front of the shooter. */
+  blocked: number;
   /** Shooting trips, and elements fired across all of them. */
   volleys: number;
   volleyElements: number;

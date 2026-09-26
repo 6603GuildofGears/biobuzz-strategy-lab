@@ -8,13 +8,24 @@ import { Switch } from "@/components/ui/switch";
 import type { RoleConfig, Strategy } from "@/lib/sim/types";
 import { SliderRow } from "./slider-row";
 
+const FLOWER_MODE_LABEL: Record<RoleConfig["flowerMode"], string> = {
+  fill: "Build (NECTAR + POLLEN)",
+  cap: "Cap (NECTAR only)",
+  claim: "Claim bottoms (1 NECTAR each, then HIVE)",
+};
+const FLOWER_MODE_SUMMARY: Record<RoleConfig["flowerMode"], string> = {
+  fill: "builds FLOWERS",
+  cap: "caps FLOWERS with NECTAR",
+  claim: "claims every FLOWER's bottom NECTAR",
+};
+
 const describeRole = (r: RoleConfig) => {
   if (r.defend) return "Defends in TELEOP";
   const ammo = r.ammo === "all" ? "POLLEN + NECTAR" : "POLLEN only";
   const flower =
     r.flowerStart === null
       ? "never goes to FLOWERS"
-      : `${r.flowerMode === "cap" ? "caps FLOWERS with NECTAR" : "builds FLOWERS"} at ${r.flowerStart}s left`;
+      : `${FLOWER_MODE_SUMMARY[r.flowerMode]} at ${r.flowerStart}s left`;
   return `HIVE with ${ammo}, ${flower}`;
 };
 
@@ -119,11 +130,14 @@ function RoleEditor({ title, role, onChange }: { title: string; role: RoleConfig
                 <Label className="text-xs text-muted-foreground">FLOWER plan</Label>
                 <Select value={role.flowerMode} onValueChange={(v) => v && set("flowerMode", v as RoleConfig["flowerMode"])}>
                   <SelectTrigger className="w-44">
-                    <SelectValue>{(v: string) => (v === "fill" ? "Build (NECTAR + POLLEN)" : "Cap (NECTAR only)")}</SelectValue>
+                    <SelectValue>{(v: string) => FLOWER_MODE_LABEL[v as RoleConfig["flowerMode"]]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fill">Build (NECTAR + POLLEN)</SelectItem>
-                    <SelectItem value="cap">Cap (NECTAR only)</SelectItem>
+                    {(Object.keys(FLOWER_MODE_LABEL) as RoleConfig["flowerMode"][]).map((k) => (
+                      <SelectItem key={k} value={k}>
+                        {FLOWER_MODE_LABEL[k]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
