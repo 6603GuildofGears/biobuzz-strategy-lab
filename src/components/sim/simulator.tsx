@@ -1,7 +1,7 @@
 "use client";
 
-import { BookOpen, ChartBar, Copy, Hexagon, Layers, PlayCircle, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { BookOpen, ChartBar, Check, Copy, Hexagon, Layers, Link2, PlayCircle, SlidersHorizontal, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,7 +14,8 @@ import { Guide } from "./guide";
 import { MatchViewer } from "./match-viewer";
 import type { Replay } from "./replay";
 import { ProfileEditor, SettingsEditor } from "./profile-editor";
-import { Showdown } from "./showdown";
+import { decodeSetup, encodeSetup, shareCodeFrom, type SharedSetup } from "./share";
+import { Showdown, forgetShowdown } from "./showdown";
 import { StrategyLibrary } from "./strategy-library";
 import { fullTitle } from "./view-titles";
 
@@ -61,6 +62,16 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
   /** Showdown matches picked for the Match viewer. `replayKey` restarts the viewer on each new pick. */
   const [replay, setReplay] = useState<Replay | null>(null);
   const [replayKey, setReplayKey] = useState(0);
+  /** A setup opened from a share link. `shareKey` restarts the showdown and Match viewer with it. */
+  const [shared, setShared] = useState<SharedSetup | null>(null);
+  const [shareKey, setShareKey] = useState(0);
+  const [shareNote, setShareNote] = useState<"loaded" | "invalid" | null>(null);
+  const [copied, setCopied] = useState(false);
+  /** What the showdown and Match viewer currently show, for the share button. */
+  const picks = useRef<{ enabled: string[]; perPair: number } | null>(null);
+  const shownMatch = useRef<SharedSetup["match"]>(undefined);
+  const onSelectionChange = useCallback((enabled: string[], perPair: number) => (picks.current = { enabled, perPair }), []);
+  const onMatchChange = useCallback((m: NonNullable<SharedSetup["match"]>) => (shownMatch.current = m), []);
   const isMobile = useIsMobile();
 
   const view: View = !isMobile && tab === "robots" ? "showdown" : tab;
@@ -89,6 +100,46 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
     if (isMobile) window.scrollTo({ top: 0 });
   };
 
+  /** Put a setup in place and restart the showdown and Match viewer with it. */
+  const applySetup = (s: SharedSetup | null) => {
+    setProfiles(s ? s.profiles : [{ ...PRESETS.Average }, { ...PRESETS.Average }]);
+    setSettings(s ? s.settings : DEFAULT_SETTINGS);
+    setCustom(s ? s.custom : defaultCustom());
+    setShared(s);
+    setReplay(null);
+    forgetShowdown();
+    setShareKey((k) => k + 1);
+    bump();
+  };
+
+  // Opened from a share link? Load its setup, then tidy the address bar. (The link is only readable in
+  // the browser, after the page loads, so this runs right after the first render.)
+  useEffect(() => {
+    const code = shareCodeFrom(window.location.hash);
+    if (code === undefined) return;
+    const id = setTimeout(() => {
+      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+      const setup = decodeSetup(code);
+      setShareNote(setup ? "loaded" : "invalid");
+      if (setup) applySetup(setup);
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Copy a link to exactly this setup (and this section, and this match in the Match viewer). */
+  const share = async () => {
+    const setup: SharedSetup = { profiles, settings, custom, ...picks.current, match: view === "match" ? shownMatch.current : undefined };
+    const url = `${window.location.origin}${pathFor(view)}#s=${encodeSetup(setup)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copy this link to share your setup:", url);
+    }
+  };
+
   useEffect(() => {
     const onPop = () => {
       const v = viewFromPath(window.location.pathname);
@@ -105,13 +156,46 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
         <div className="flex flex-wrap items-center gap-2">
           <Hexagon className="size-6 fill-amber-400 text-amber-500" />
           <h1 className="text-xl font-bold tracking-tight lg:text-2xl">BIOBUZZ Strategy Lab</h1>
-          <Button variant="outline" size="sm" className="ml-auto hidden lg:inline-flex" onClick={() => go("guide")}>
-            <BookOpen /> How it works
-          </Button>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="sm" onClick={share} title="Copy a link to these exact settings">
+              {copied ? <Check /> : <Link2 />} {copied ? "Link copied" : "Share setup"}
+            </Button>
+            <Button variant="outline" size="sm" className="hidden lg:inline-flex" onClick={() => go("guide")}>
+              <BookOpen /> How it works
+            </Button>
+          </div>
         </div>
         <p className={cn("max-w-3xl text-sm text-muted-foreground", view !== "showdown" && "hidden lg:block")}>
           Monte Carlo simulator for the 2026–27 FTC game. Set how fast and accurate your robots are, then play the strategies against each other to see which one wins the most.
         </p>
+        {shareNote && (
+          <div className="mt-1 flex max-w-3xl items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+            <Link2 className="mt-0.5 size-4 shrink-0" />
+            <p className="flex-1">
+              {shareNote === "loaded"
+                ? "You're looking at a shared setup: the robot sliders, game settings and strategies are exactly what was shared, so the results match too."
+                : "That share link couldn't be read, so you're seeing the default setup."}
+              {shareNote === "loaded" && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="font-medium underline underline-offset-4"
+                    onClick={() => {
+                      applySetup(null);
+                      setShareNote(null);
+                    }}
+                  >
+                    Back to defaults
+                  </button>
+                </>
+              )}
+            </p>
+            <button type="button" aria-label="Dismiss" onClick={() => setShareNote(null)}>
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
@@ -186,6 +270,10 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
             </TabsList>
             <TabsContent value="showdown" className="lg:pt-3">
               <Showdown
+                key={shareKey}
+                initialEnabled={shared?.enabled}
+                initialPerPair={shared?.perPair}
+                onSelectionChange={onSelectionChange}
                 strategies={strategies}
                 profiles={profiles}
                 settings={settings}
@@ -199,7 +287,9 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
             </TabsContent>
             <TabsContent value="match" className="lg:pt-3">
               <MatchViewer
-                key={replayKey}
+                key={`${replayKey}-${shareKey}`}
+                initialMatch={shared?.match}
+                onMatchChange={onMatchChange}
                 strategies={strategies}
                 profiles={profiles}
                 settings={settings}

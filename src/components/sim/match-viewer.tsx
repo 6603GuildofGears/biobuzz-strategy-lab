@@ -44,6 +44,8 @@ export function MatchViewer({
   configVersion,
   replay,
   onExitReplay,
+  initialMatch,
+  onMatchChange,
 }: {
   strategies: Strategy[];
   profiles: [RobotProfile, RobotProfile];
@@ -52,12 +54,19 @@ export function MatchViewer({
   /** Exact matches from the Strategy showdown to step through, or null. */
   replay: Replay | null;
   onExitReplay: () => void;
+  /** The match to open, from a share link. */
+  initialMatch?: { redId: string; blueId: string; seed: number };
+  /** Tells the share button which match is showing. */
+  onMatchChange?: (m: { redId: string; blueId: string; seed: number }) => void;
 }) {
-  const first = replay?.matches[0];
+  const first = replay?.matches[0] ?? initialMatch;
   const [redId, setRedId] = useState(first?.redId ?? strategies[0].id);
   const [blueId, setBlueId] = useState(first?.blueId ?? strategies[1].id);
   const [seed, setSeed] = useState(first?.seed ?? 42);
   const [replayIndex, setReplayIndex] = useState(0);
+  useEffect(() => {
+    onMatchChange?.({ redId, blueId, seed });
+  }, [redId, blueId, seed, onMatchChange]);
   const byId = (id: string, fallback: Strategy) => strategies.find((s) => s.id === id) ?? fallback;
   const red = byId(redId, strategies[0]);
   const blue = byId(blueId, strategies[1]);

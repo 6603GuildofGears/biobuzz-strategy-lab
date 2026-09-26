@@ -29,6 +29,11 @@ type SavedShowdown = {
 /** Survives leaving the tab. The page used to remount and run the whole showdown again. */
 let savedShowdown: SavedShowdown | null = null;
 
+/** Drop the kept results, so the next showdown starts fresh (used when a share link loads a new setup). */
+export function forgetShowdown() {
+  savedShowdown = null;
+}
+
 const SERIES = [
   { key: "tips", label: "HIVE tips", color: "#f59e0b" },
   { key: "cell", label: "Left in CELL", color: "#fcd34d" },
@@ -43,6 +48,9 @@ export function Showdown({
   settings,
   configVersion,
   onWatch,
+  initialEnabled,
+  initialPerPair,
+  onSelectionChange,
 }: {
   strategies: Strategy[];
   profiles: [RobotProfile, RobotProfile];
@@ -50,13 +58,24 @@ export function Showdown({
   configVersion: number;
   /** Open exact showdown matches in the Match viewer. */
   onWatch: (replay: Replay) => void;
+  /** Starting picks from a share link. */
+  initialEnabled?: string[];
+  initialPerPair?: number;
+  /** Tells the share button what's picked. */
+  onSelectionChange?: (enabled: string[], perPair: number) => void;
 }) {
   const [enabled, setEnabled] = useState<Set<string>>(
-    () => new Set(savedShowdown?.enabled ?? strategies.filter((s) => s.id !== "custom").map((s) => s.id)),
+    () => new Set(savedShowdown?.enabled ?? initialEnabled ?? strategies.filter((s) => s.id !== "custom").map((s) => s.id)),
   );
   const [perPair, setPerPair] = useState(
-    () => savedShowdown?.perPair ?? (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? 20 : 50),
+    () =>
+      savedShowdown?.perPair ??
+      initialPerPair ??
+      (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? 20 : 50),
   );
+  useEffect(() => {
+    onSelectionChange?.([...enabled], perPair);
+  }, [enabled, perPair, onSelectionChange]);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [rankBy, setRankBy] = useState<"qual" | "playoff">("qual");
