@@ -1,6 +1,7 @@
 import { BookOpen, ChartBar, Gauge, Lightbulb, ListChecks, PlayCircle, Settings2, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TEAM, TeamLogo } from "./team";
 
 const STEPS = [
   {
@@ -76,6 +77,27 @@ const LIMITS = [
 export function Guide() {
   return (
     <div className="space-y-4">
+      <Card>
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <TeamLogo className="size-14" />
+          <div className="space-y-2 text-sm leading-relaxed">
+            <p className="text-base font-semibold">Why we built this</p>
+            <p className="text-muted-foreground">
+              Last season, our team put a lot of time into sorting, and in the end it didn&apos;t matter much in matches. This season we wanted to know
+              what actually wins <em>before</em> we build. BIOBUZZ Strategy Lab plays out thousands of matches with different robot abilities and
+              strategies, so we can see which abilities earn the points and focus our robot on those.
+            </p>
+            <p className="text-muted-foreground">
+              Built by{" "}
+              <a href={TEAM.url} target="_blank" rel="noreferrer" className="font-medium text-foreground underline-offset-4 hover:underline">
+                {TEAM.name}
+              </a>
+              .
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
