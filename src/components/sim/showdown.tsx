@@ -54,9 +54,11 @@ export function Showdown({
   const [enabled, setEnabled] = useState<Set<string>>(
     () => new Set(savedShowdown?.enabled ?? strategies.filter((s) => s.id !== "custom").map((s) => s.id)),
   );
-  const [perPair, setPerPair] = useState(
-    () => savedShowdown?.perPair ?? (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? 20 : 50),
-  );
+  const isMobile = useIsMobile();
+  // Until someone picks a number, phones run fewer matches. (Worked out from useIsMobile, so the
+  // page's first render matches the server's.)
+  const [perPairChoice, setPerPair] = useState<number | null>(() => savedShowdown?.perPair ?? null);
+  const perPair = perPairChoice ?? (isMobile ? 20 : 50);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [rankBy, setRankBy] = useState<"qual" | "playoff">("qual");
@@ -65,7 +67,6 @@ export function Showdown({
   );
   const [error, setError] = useState<string | null>(null);
   const runId = useRef(0);
-  const isMobile = useIsMobile();
 
   const selected = strategies.filter((s) => enabled.has(s.id));
 
@@ -93,14 +94,19 @@ export function Showdown({
     }
   };
 
+  const latestRun = useRef(run);
+  useEffect(() => {
+    latestRun.current = run;
+  });
+
   useEffect(() => {
     if (savedShowdown) return;
-    const id = setTimeout(run, 0);
+    // The latest `run`: right after the page loads, the phone check updates and changes the match count.
+    const id = setTimeout(() => latestRun.current(), 0);
     return () => {
       clearTimeout(id);
       runId.current += 1;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stale = result && (result.version !== configVersion || result.strategies.length !== selected.length);
