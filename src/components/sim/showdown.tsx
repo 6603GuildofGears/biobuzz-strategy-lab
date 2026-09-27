@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { presetName, track } from "@/lib/analytics";
 import { runTournamentParallel } from "@/lib/sim/parallel";
 import { byPlayoffRank, byQualificationRank, type TournamentResult } from "@/lib/sim/tournament";
 import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
@@ -69,7 +70,8 @@ export function Showdown({
 
   const selected = strategies.filter((s) => enabled.has(s.id));
 
-  const run = async () => {
+  /** `trigger`: "auto" for the run when the page opens, "button" when someone presses Run. */
+  const run = async (trigger: "auto" | "button" = "button") => {
     if (selected.length < 2) return;
     const id = ++runId.current;
     setRunning(true);
@@ -82,6 +84,15 @@ export function Showdown({
         () => id !== runId.current,
       );
       if (res && id === runId.current) {
+        track("showdown_run", {
+          trigger,
+          strategies: selected.length,
+          matches_per_pair: perPair,
+          top_rp_strategy: [...res.stats].sort(byQualificationRank)[0]?.name ?? "",
+          top_win_strategy: [...res.stats].sort(byPlayoffRank)[0]?.name ?? "",
+          robot1_preset: presetName(profiles[0]),
+          robot2_preset: presetName(profiles[1]),
+        });
         const next = { res, version: configVersion, strategies: selected };
         savedShowdown = { ...next, enabled: selected.map((s) => s.id), perPair };
         setResult(next);
@@ -95,7 +106,7 @@ export function Showdown({
 
   useEffect(() => {
     if (savedShowdown) return;
-    const id = setTimeout(run, 0);
+    const id = setTimeout(() => run("auto"), 0);
     return () => {
       clearTimeout(id);
       runId.current += 1;
@@ -169,7 +180,7 @@ export function Showdown({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={run} disabled={running || selected.length < 2} className="max-sm:h-10 max-sm:w-full">
+            <Button onClick={() => run("button")} disabled={running || selected.length < 2} className="max-sm:h-10 max-sm:w-full">
               {running ? <Loader2 className="animate-spin" /> : <Play />}
               {running ? "Simulating…" : `Run ${selected.length * selected.length * Math.ceil(perPair / 2)} matches`}
             </Button>
@@ -230,7 +241,10 @@ export function Showdown({
                     ["playoff", "Playoffs (win %)"],
                   ] as const
                 ).map(([k, label]) => (
-                  <Button key={k} size="sm" variant={rankBy === k ? "default" : "outline"} className="h-7 text-xs" onClick={() => setRankBy(k)}>
+                  <Button key={k} size="sm" variant={rankBy === k ? "default" : "outline"} className="h-7 text-xs" onClick={() => {
+                    setRankBy(k);
+                    track("ranking_view_changed", { view: k === "qual" ? "qualifications" : "playoffs" });
+                  }}>
                     {label}
                   </Button>
                 ))}
