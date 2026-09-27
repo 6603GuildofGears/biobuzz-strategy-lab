@@ -1,11 +1,12 @@
 "use client";
 
 import { BookOpen, ChartBar, Copy, Hexagon, Layers, PlayCircle, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { reportChanges, track, type Setup } from "@/lib/analytics";
 import { DEFAULT_SETTINGS, PRESETS, STRATEGIES, defaultCustom } from "@/lib/sim/strategies";
 import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
 import { cn } from "@/lib/utils";
@@ -88,6 +89,17 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
     }
     if (isMobile) window.scrollTo({ top: 0 });
   };
+
+  // Tell Google Analytics what people change, a moment after they stop (so a slider drag is one event).
+  const reported = useRef<Setup>({ profiles, settings, custom });
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const now: Setup = { profiles, settings, custom };
+      reportChanges(reported.current, now);
+      reported.current = now;
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [profiles, settings, custom]);
 
   useEffect(() => {
     const onPop = () => {
@@ -191,6 +203,9 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
                 settings={settings}
                 configVersion={version}
                 onWatch={(r) => {
+                  const [m] = r.matches;
+                  const name = (id: string) => strategies.find((s) => s.id === id)?.name ?? id;
+                  if (m) track("showdown_replay_opened", { red_strategy: name(m.redId), blue_strategy: name(m.blueId) });
                   setReplay(r);
                   setReplayKey((k) => k + 1);
                   go("match");

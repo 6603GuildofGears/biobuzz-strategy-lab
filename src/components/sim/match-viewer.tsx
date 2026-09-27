@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { track } from "@/lib/analytics";
 import { FRAME_DT, simulateMatch } from "@/lib/sim/engine";
 import { AUTO_END, FLOWER_UNLOCK, MATCH_LENGTH, TELEOP_START } from "@/lib/sim/rules";
 import type { GameSettings, MatchResult, RobotProfile, ScoreBreakdown, Strategy } from "@/lib/sim/types";
@@ -69,7 +70,9 @@ export function MatchViewer({
   const [speed, setSpeed] = useState(4);
   const raf = useRef<number | null>(null);
 
-  const load = (r: string, b: string, s: number) => {
+  /** `source` says how the match was picked, for Google Analytics ("run", "new_seed", "showdown_replay"). */
+  const load = (r: string, b: string, s: number, source: string) => {
+    track("match_viewed", { red_strategy: byId(r, strategies[0]).name, blue_strategy: byId(b, strategies[1]).name, source });
     setRedId(r);
     setBlueId(b);
     setSeed(s);
@@ -77,12 +80,12 @@ export function MatchViewer({
     setFrameIdx(0);
     setPlaying(true);
   };
-  const run = (s = seed) => load(redId, blueId, s);
+  const run = (s = seed, source = "run") => load(redId, blueId, s, source);
   const showReplay = (i: number) => {
     const m = replay?.matches[i];
     if (!m) return;
     setReplayIndex(i);
-    load(m.redId, m.blueId, m.seed);
+    load(m.redId, m.blueId, m.seed, "showdown_replay");
   };
   /** Picking your own strategies or seed leaves the showdown replay. */
   const leaveReplay = () => {
@@ -168,7 +171,7 @@ export function MatchViewer({
                 className="max-sm:h-10 max-sm:flex-1"
                 onClick={() => {
                   leaveReplay();
-                  run(Math.floor(Math.random() * 1e6));
+                  run(Math.floor(Math.random() * 1e6), "new_seed");
                 }}
               >
                 <Shuffle /> New seed
