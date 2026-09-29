@@ -98,6 +98,28 @@ describe("HIVE calibration (the tip weights)", () => {
   });
 });
 
+describe("HIVE scoring (Table 10-2)", () => {
+  test("a ball in the CELL adds no points until the match is over, and then 2 each", () => {
+    const m = newMatch();
+    const before = scoreAlliance(m, "red", false).total;
+    addToCell(m, "red", "P");
+    assert.equal(scoreAlliance(m, "red", false).cell, 0);
+    assert.equal(scoreAlliance(m, "red", false).total, before);
+    assert.equal(scoreAlliance(m, "red", true).cell, m.hives.red.cell.length * 2);
+  });
+  test("a tip is worth 20 as soon as it happens", () => {
+    const m = newMatch({ ...DEFAULT_SETTINGS, tipVariance: 0 });
+    const h = m.hives.red;
+    h.cell = [];
+    h.weight = 0;
+    const before = scoreAlliance(m, "red", false).total;
+    for (const k of Array(8).fill("P") as Kind[]) addToCell(m, "red", k);
+    assert.equal(h.tips, 1);
+    assert.equal(scoreAlliance(m, "red", false).total, before + 20);
+    assert.equal(scoreAlliance(m, "red", false).cell, 0);
+  });
+});
+
 describe("Launcher physics", () => {
   test("a ball slower than about 15.5 ft/s can't climb to the CELL at all", () => {
     assert.equal(physicsReach(15), 0);

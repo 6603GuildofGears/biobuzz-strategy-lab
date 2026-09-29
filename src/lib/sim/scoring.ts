@@ -35,7 +35,8 @@ export function scoreAlliance(m: MatchState, a: Alliance, final: boolean): Score
   }
   // Any element partly in the GARDEN, whoever put it there and whatever its color (10.5.3).
   const garden = m.balls.filter((b) => b.z <= 0 && inRect(b, GARDEN[a], BALL_RADIUS[b.k])).length * POINTS.garden;
-  const cell = h.cell.length * POINTS.inCell;
+  // Elements in the upward CELL are worth 2 only if they are still there when the match ends (Table 10-2).
+  const cell = final ? h.cell.length * POINTS.inCell : 0;
   const autoTips = h.autoTips * POINTS.tip;
   const teleopTips = (h.tips - h.autoTips) * POINTS.tip;
   const total = leave + autoPark + park + flowerBottom + flowerOwned + garden + cell + autoTips + teleopTips + m.foulCredit[a];
