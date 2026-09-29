@@ -215,8 +215,8 @@ export function MatchViewer({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Type a seed and run it to watch that match again. It only matches a past game when the two strategies and the robot sliders are the same as
-            they were then. Both alliances use those sliders, so only strategy and luck differ.
+            Seed {seed}. Both alliances use the same robot sliders, so only strategy and luck differ. The Strategy showdown plays matches with this exact
+            same simulation.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
