@@ -54,7 +54,7 @@ export function Showdown({
   onWatch: (replay: Replay) => void;
 }) {
   const [enabled, setEnabled] = useState<Set<string>>(
-    () => new Set(savedShowdown?.enabled ?? strategies.filter((s) => s.id !== "custom").map((s) => s.id)),
+    () => new Set(savedShowdown?.enabled ?? strategies.map((s) => s.id)),
   );
   const [perPair, setPerPair] = useState(
     () => savedShowdown?.perPair ?? (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? 20 : 50),
@@ -293,7 +293,7 @@ export function Showdown({
           </Card>
 
           <div className="grid gap-4 2xl:grid-cols-2">
-            <Card>
+            <Card data-tour="points-chart">
               <CardHeader>
                 <CardTitle className="text-base">Where the points come from</CardTitle>
                 <CardDescription>Average points per match by source.</CardDescription>

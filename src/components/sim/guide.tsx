@@ -20,10 +20,6 @@ const STEPS = [
     title: "Watch a match",
     body: "Open the Match viewer, pick a strategy for each alliance, and watch the robots play. This is the best way to see why a strategy wins or loses: where the robots spend their time, when FLOWERS get claimed or stolen, and whether they get back to park.",
   },
-  {
-    title: "Try your own idea",
-    body: "On the Strategies tab, build a Custom strategy by picking each robot's role: what it launches, when (and whether) it goes to FLOWERS, whether it plays defense, and whether it parks. Custom then shows up in the showdown and the match viewer.",
-  },
 ];
 
 const OUTPUTS: { name: string; means: string }[] = [
@@ -98,7 +94,7 @@ export function Guide({ onStartTour }: { onStartTour: () => void }) {
         </CardContent>
       </Card>
 
-      <Section icon={<ListChecks className="size-4" />} title="Quick start" description="Five steps from opening the page to a recommendation.">
+      <Section icon={<ListChecks className="size-4" />} title="Quick start" description="Four steps from opening the page to a recommendation.">
         <ol className="space-y-3">
           {STEPS.map((s, i) => (
             <li key={s.title} className="flex gap-3">

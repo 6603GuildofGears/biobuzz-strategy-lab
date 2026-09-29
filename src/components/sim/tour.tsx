@@ -67,6 +67,13 @@ export const TOUR_STEPS: Step[] = [
     waiting: RESULTS_WAITING,
   },
   {
+    target: "points-chart",
+    view: "showdown",
+    title: "See where the points come from",
+    body: "Each bar splits a strategy's average score by source: HIVE tips, elements left in the CELL, FLOWERS, LEAVE and parking, and GARDEN plus fouls. Hover a bar to see the exact numbers.",
+    waiting: RESULTS_WAITING,
+  },
+  {
     target: "head-to-head",
     view: "showdown",
     title: "Find the counters",
@@ -84,12 +91,6 @@ export const TOUR_STEPS: Step[] = [
     view: "match",
     title: "The field",
     body: "Red and blue squares are robots, and the dots under them are what they carry. Use play, the scrubber and the speed buttons to see where each robot spends its time.",
-  },
-  {
-    target: "custom-strategy",
-    view: "strategies",
-    title: "Step 5: Try your own idea",
-    body: "Build a Custom strategy by choosing each robot's role. It then shows up in the showdown and the match viewer like any other strategy.",
   },
   {
     target: "help",

@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, PRESETS } from "@/lib/sim/strategies";
-import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
+import type { GameSettings, RobotProfile } from "@/lib/sim/types";
 
 /**
  * Google Analytics events for what people do inside the app (moving sliders, running the showdown,
@@ -29,7 +29,6 @@ export function presetName(p: RobotProfile) {
 export interface Setup {
   profiles: [RobotProfile, RobotProfile];
   settings: GameSettings;
-  custom: Strategy;
 }
 
 const value = (v: unknown) => (typeof v === "number" || typeof v === "string" || typeof v === "boolean" ? v : String(v));
@@ -55,11 +54,4 @@ export function reportChanges(before: Setup, after: Setup) {
   const reset = changedSettings.length > 1 && changedSettings.every((k) => after.settings[k] === DEFAULT_SETTINGS[k]);
   if (reset) track("game_settings_reset");
   else for (const k of changedSettings) track("game_setting_changed", { setting: k, value: value(after.settings[k]) });
-
-  after.custom.roles.forEach((role, i) => {
-    const old = before.custom.roles[i];
-    for (const k of Object.keys(role) as (keyof typeof role)[]) {
-      if (k !== "label" && role[k] !== old[k]) track("custom_strategy_changed", { robot: i + 1, setting: k, value: value(role[k]) });
-    }
-  });
 }

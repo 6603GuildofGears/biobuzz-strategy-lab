@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
 import { presetName, reportChanges, type Setup } from "../src/lib/analytics";
-import { DEFAULT_SETTINGS, PRESETS, defaultCustom } from "../src/lib/sim/strategies";
+import { DEFAULT_SETTINGS, PRESETS } from "../src/lib/sim/strategies";
 
 let sent: unknown[][] = [];
 beforeEach(() => {
@@ -13,7 +13,7 @@ beforeEach(() => {
   (globalThis as { window?: unknown }).window = { gtag: (...args: unknown[]) => sent.push(args) };
 });
 
-const setup = (): Setup => ({ profiles: [{ ...PRESETS.Average }, { ...PRESETS.Average }], settings: { ...DEFAULT_SETTINGS }, custom: defaultCustom() });
+const setup = (): Setup => ({ profiles: [{ ...PRESETS.Average }, { ...PRESETS.Average }], settings: { ...DEFAULT_SETTINGS } });
 
 describe("Analytics events", () => {
   test("nothing changed, nothing sent", () => {
@@ -32,15 +32,11 @@ describe("Analytics events", () => {
     reportChanges(setup(), after);
     assert.deepEqual(sent, [["event", "robot_preset_selected", { robot: 1, preset: "Elite" }]]);
   });
-  test("game settings and the Custom strategy are reported too", () => {
+  test("game settings are reported too", () => {
     const after = setup();
     after.settings = { ...after.settings, blockChance: 0.3 };
-    after.custom = { ...after.custom, roles: [{ ...after.custom.roles[0], defend: true }, after.custom.roles[1]] };
     reportChanges(setup(), after);
-    assert.deepEqual(sent, [
-      ["event", "game_setting_changed", { setting: "blockChance", value: 0.3 }],
-      ["event", "custom_strategy_changed", { robot: 1, setting: "defend", value: true }],
-    ]);
+    assert.deepEqual(sent, [["event", "game_setting_changed", { setting: "blockChance", value: 0.3 }]]);
   });
   test("presetName recognizes presets and custom robots", () => {
     assert.equal(presetName({ ...PRESETS.Rookie }), "Rookie");

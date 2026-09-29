@@ -1,14 +1,14 @@
 "use client";
 
 import { BookOpen, ChartBar, Compass, Copy, Hexagon, Layers, PlayCircle, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { reportChanges, track, type Setup } from "@/lib/analytics";
-import { DEFAULT_SETTINGS, PRESETS, STRATEGIES, defaultCustom } from "@/lib/sim/strategies";
-import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
+import { DEFAULT_SETTINGS, PRESETS, STRATEGIES } from "@/lib/sim/strategies";
+import type { GameSettings, RobotProfile } from "@/lib/sim/types";
 import { cn } from "@/lib/utils";
 import { Assumptions } from "./assumptions";
 import { Guide } from "./guide";
@@ -60,7 +60,6 @@ const TOUR_SEEN_KEY = "biobuzz-tour-seen";
 export function Simulator({ initialView = "showdown" }: { initialView?: View }) {
   const [profiles, setProfiles] = useState<[RobotProfile, RobotProfile]>([{ ...PRESETS.Average }, { ...PRESETS.Average }]);
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
-  const [custom, setCustom] = useState<Strategy>(defaultCustom);
   const [version, setVersion] = useState(0);
   const [tab, setTab] = useState<View>(initialView);
   /** Showdown matches picked for the Match viewer. `replayKey` restarts the viewer on each new pick. */
@@ -74,7 +73,7 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
   const showRobots = isMobile && view === "robots";
 
   const bump = () => setVersion((v) => v + 1);
-  const strategies = useMemo(() => [...STRATEGIES, custom], [custom]);
+  const strategies = STRATEGIES;
 
   const setProfile = (i: 0 | 1, p: RobotProfile) => {
     setProfiles((prev) => {
@@ -115,15 +114,15 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
   }, []);
 
   // Tell Google Analytics what people change, a moment after they stop (so a slider drag is one event).
-  const reported = useRef<Setup>({ profiles, settings, custom });
+  const reported = useRef<Setup>({ profiles, settings });
   useEffect(() => {
     const id = setTimeout(() => {
-      const now: Setup = { profiles, settings, custom };
+      const now: Setup = { profiles, settings };
       reportChanges(reported.current, now);
       reported.current = now;
     }, 1500);
     return () => clearTimeout(id);
-  }, [profiles, settings, custom]);
+  }, [profiles, settings]);
 
   useEffect(() => {
     const onPop = () => {
@@ -251,14 +250,7 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
               />
             </TabsContent>
             <TabsContent value="strategies" className="lg:pt-3">
-              <StrategyLibrary
-                strategies={STRATEGIES}
-                custom={custom}
-                onCustomChange={(s) => {
-                  setCustom(s);
-                  bump();
-                }}
-              />
+              <StrategyLibrary strategies={STRATEGIES} />
             </TabsContent>
             <TabsContent value="rules" className="lg:pt-3">
               <Assumptions />

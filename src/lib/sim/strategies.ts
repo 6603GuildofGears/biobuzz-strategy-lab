@@ -89,16 +89,6 @@ export const STRATEGIES: Strategy[] = [
   },
 ];
 
-export const CUSTOM_ID = "custom";
-
-export const defaultCustom = (): Strategy => ({
-  id: CUSTOM_ID,
-  name: "Custom",
-  tagline: "Your own mix of roles",
-  description: "Configure each robot's role yourself.",
-  roles: [hive("Robot 1"), hive("Robot 2", { ammo: "pollen", flowerStart: 45 })],
-});
-
 export const PRESETS: Record<string, RobotProfile> = {
   Rookie: {
     driveSpeed: 2.4,
