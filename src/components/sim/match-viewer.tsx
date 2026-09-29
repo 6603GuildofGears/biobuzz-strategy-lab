@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { track } from "@/lib/analytics";
@@ -16,6 +18,14 @@ import { FieldView } from "./field-view";
 import type { Replay, ReplayMatch } from "./replay";
 
 const SPEEDS = [1, 2, 4, 8];
+
+/** A whole number, the same kind of seed the match and the showdown already use. */
+function parseSeed(text: string): number | null {
+  const t = text.trim();
+  if (!/^-?\d+$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isSafeInteger(n) ? n : null;
+}
 
 const clock = (t: number) => {
   if (t < AUTO_END) return { phase: "AUTO", left: AUTO_END - t };
@@ -58,6 +68,7 @@ export function MatchViewer({
   const [redId, setRedId] = useState(first?.redId ?? strategies[0].id);
   const [blueId, setBlueId] = useState(first?.blueId ?? strategies[1].id);
   const [seed, setSeed] = useState(first?.seed ?? 42);
+  const [seedText, setSeedText] = useState(String(first?.seed ?? 42));
   const [replayIndex, setReplayIndex] = useState(0);
   const byId = (id: string, fallback: Strategy) => strategies.find((s) => s.id === id) ?? fallback;
   const red = byId(redId, strategies[0]);
@@ -81,6 +92,17 @@ export function MatchViewer({
     setPlaying(true);
   };
   const run = (s = seed, source = "run") => load(redId, blueId, s, source);
+  const typedSeed = parseSeed(seedText);
+  /** Play whatever seed is in the box. Same seed, strategies, and robot sliders means the same match. */
+  const runTyped = () => {
+    if (typedSeed === null) return;
+    leaveReplay();
+    run(typedSeed, typedSeed === seed ? "run" : "typed_seed");
+  };
+
+  useEffect(() => {
+    setSeedText(String(seed));
+  }, [seed]);
   const showReplay = (i: number) => {
     const m = replay?.matches[i];
     if (!m) return;
@@ -162,8 +184,22 @@ export function MatchViewer({
               }}
               strategies={strategies}
             />
-            <div className="col-span-2 flex gap-2">
-              <Button className="max-sm:h-10 max-sm:flex-1" onClick={() => run()}>
+            <div className="col-span-2 min-w-0 space-y-1 sm:col-span-1">
+              <Label htmlFor="match-seed" className="text-xs">Seed</Label>
+              <Input
+                id="match-seed"
+                inputMode="numeric"
+                value={seedText}
+                aria-invalid={typedSeed === null}
+                onChange={(e) => setSeedText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") runTyped();
+                }}
+                className="font-mono tabular-nums sm:w-28"
+              />
+            </div>
+            <div className="col-span-2 flex gap-2 sm:col-span-1">
+              <Button className="max-sm:h-10 max-sm:flex-1" onClick={runTyped} disabled={typedSeed === null}>
                 <RotateCcw /> Run match
               </Button>
               <Button
@@ -179,8 +215,8 @@ export function MatchViewer({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Seed {seed}. Both alliances use the same robot sliders, so only strategy and luck differ. The Strategy showdown plays matches with this exact
-            same simulation.
+            Type a seed and run it to watch that match again. It only matches a past game when the two strategies and the robot sliders are the same as
+            they were then. Both alliances use those sliders, so only strategy and luck differ.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
