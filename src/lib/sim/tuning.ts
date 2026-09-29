@@ -22,9 +22,9 @@ export const ACCURACY_AT_MAX_RANGE = 0.5;
 
 // ---------- Driving ----------
 /** How fast each drivetrain can spin in place, in degrees per second. */
-export const TURN_RATE: Record<Drivetrain, number> = { mecanum: 270, swerve: 360, tank: 180 };
+export const TURN_RATE: Record<Drivetrain, number> = { mecanum: 160, swerve: 220, tank: 100 };
 /** Top speed sideways, as a fraction of top speed forward. A tank drive can't move sideways at all. */
-export const STRAFE_SPEED: Record<Drivetrain, number> = { mecanum: 0.8, swerve: 1, tank: 0 };
+export const STRAFE_SPEED: Record<Drivetrain, number> = { mecanum: 0.6, swerve: 0.85, tank: 0 };
 /** How well each drivetrain grips the tiles when pushing. Multiplied by weight to get pushing strength. */
 export const TRACTION: Record<Drivetrain, number> = { mecanum: 0.7, swerve: 0.9, tank: 1 };
 /** Every timed action (intake, aim, launch, place) randomly takes up to this much longer or shorter. Drivers aren't perfectly consistent. */

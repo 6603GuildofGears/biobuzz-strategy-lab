@@ -178,8 +178,8 @@ export function ProfileEditor({
           hint="How long the rollers take to pull a ball in. Robots pick balls up on the run, but they can only drive over a ball as fast as the intake can swallow it (about 1 ft per intake time), so a quicker intake means less slowing down."
           value={profile.intakeTime}
           min={0.05}
-          max={0.4}
-          step={0.01}
+          max={1.5}
+          step={0.05}
           format={secs}
           onChange={(v) => set("intakeTime", v)}
         />

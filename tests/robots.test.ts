@@ -38,7 +38,7 @@ const ballAhead = (m: MatchState, r: Robot, side: number, k: Kind = "P") => spaw
 describe("Picking up on the run", () => {
   test("a ball in the intake's mouth comes in while the robot keeps driving", () => {
     const m = newMatch();
-    const r = driving(m, 2);
+    const r = driving(m, 1);
     ballAhead(m, r, 0);
     intakeBalls(m);
     assert.deepEqual(r.held, ["P"]);

@@ -160,7 +160,7 @@ npm run smoke -- Elite      # one match's event log plus a quick tournament
 npm run dev                 # the website, at http://localhost:4817
 ```
 
-**Changing a guess.** Open `tuning.ts`, change a number, run `npm test` and `npm run measure`, then look at the Match viewer. For example, if your drivers turn a tank drive faster than 180°/s, change `TURN_RATE.tank`.
+**Changing a guess.** Open `tuning.ts`, change a number, run `npm test` and `npm run measure`, then look at the Match viewer. For example, if your drivers turn a tank drive faster than 100°/s, change `TURN_RATE.tank`.
 
 **Adding a strategy.** Add an entry to `STRATEGIES` in `strategies.ts`. A strategy is two roles (one per robot). Each role says what the robot launches, when (and whether) it switches to FLOWERS, whether it defends, and whether it parks.
 
