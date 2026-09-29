@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip as HintTooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { presetName, track } from "@/lib/analytics";
 import { runTournamentParallel } from "@/lib/sim/parallel";
 import { byPlayoffRank, byQualificationRank, type TournamentResult } from "@/lib/sim/tournament";
@@ -139,7 +140,7 @@ export function Showdown({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" data-tour="strategy-picks">
             {strategies.map((s) => {
               const on = enabled.has(s.id);
               return (
@@ -180,7 +181,7 @@ export function Showdown({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => run("button")} disabled={running || selected.length < 2} className="max-sm:h-10 max-sm:w-full">
+            <Button data-tour="run" onClick={() => run("button")} disabled={running || selected.length < 2} className="max-sm:h-10 max-sm:w-full">
               {running ? <Loader2 className="animate-spin" /> : <Play />}
               {running ? "Simulating…" : `Run ${selected.length * selected.length * Math.ceil(perPair / 2)} matches`}
             </Button>
@@ -225,7 +226,7 @@ export function Showdown({
             />
           </div>
 
-          <Card>
+          <Card data-tour="rankings">
             <CardHeader>
               <CardTitle className="text-base">Rankings</CardTitle>
               <CardDescription>
@@ -256,14 +257,14 @@ export function Showdown({
                   <TableRow>
                     <TableHead>#</TableHead>
                     <TableHead>Strategy</TableHead>
-                    <TableHead className="text-right">Win %</TableHead>
-                    <TableHead className="hidden text-right sm:table-cell">Avg score</TableHead>
-                    <TableHead className="text-right">Margin</TableHead>
-                    <TableHead className="hidden text-right md:table-cell">± SD</TableHead>
-                    <TableHead className="hidden text-right sm:table-cell">Tips</TableHead>
-                    <TableHead className="hidden text-right md:table-cell">FLOWER pts</TableHead>
-                    <TableHead className="text-right">RP</TableHead>
-                    <TableHead className="hidden text-right md:table-cell">4+ / 7+ tips</TableHead>
+                    <TableHead className="text-right"><ColumnHint name="Win %" /></TableHead>
+                    <TableHead className="hidden text-right sm:table-cell"><ColumnHint name="Avg score" /></TableHead>
+                    <TableHead className="text-right"><ColumnHint name="Margin" /></TableHead>
+                    <TableHead className="hidden text-right md:table-cell"><ColumnHint name="± SD" /></TableHead>
+                    <TableHead className="hidden text-right sm:table-cell"><ColumnHint name="Tips" /></TableHead>
+                    <TableHead className="hidden text-right md:table-cell"><ColumnHint name="FLOWER pts" /></TableHead>
+                    <TableHead className="text-right"><ColumnHint name="RP" /></TableHead>
+                    <TableHead className="hidden text-right md:table-cell"><ColumnHint name="4+ / 7+ tips" /></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -315,7 +316,7 @@ export function Showdown({
               </CardContent>
             </Card>
 
-            <Card>
+            <Card data-tour="head-to-head">
               <CardHeader>
                 <CardTitle className="text-base">Head to head</CardTitle>
                 <CardDescription>
@@ -443,5 +444,26 @@ function HeadToHead({
         </ol>
       )}
     </div>
+  );
+}
+
+/** What each Rankings column means, shown when you hover its name. The Guide has the longer versions. */
+const COLUMN_HINTS: Record<string, string> = {
+  "Win %": "How often it wins against every selected strategy. Ties count as half a win.",
+  "Avg score": "Average points scored per match.",
+  Margin: "Average points scored minus points allowed. Positive means it usually outscores its opponents.",
+  "± SD": "How much the score swings from match to match. Lower means more consistent.",
+  Tips: "Average HIVE TIPS per match (20 points each).",
+  "FLOWER pts": "Average points from FLOWERS: the bottom-NECTAR bonus plus points for owned FLOWERS.",
+  RP: "Average RANKING POINTS per match: win/tie points plus the SWARM and POLLINATOR bonuses. Qualification rankings use this.",
+  "4+ / 7+ tips": "How often the alliance reaches the POLLINATOR 1 (4 tips) and POLLINATOR 2 (7 tips) RP thresholds.",
+};
+
+function ColumnHint({ name }: { name: keyof typeof COLUMN_HINTS }) {
+  return (
+    <HintTooltip>
+      <TooltipTrigger className="cursor-help underline decoration-muted-foreground/50 decoration-dotted underline-offset-4">{name}</TooltipTrigger>
+      <TooltipContent className="max-w-64 text-left font-normal">{COLUMN_HINTS[name]}</TooltipContent>
+    </HintTooltip>
   );
 }

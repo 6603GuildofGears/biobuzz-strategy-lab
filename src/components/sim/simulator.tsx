@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChartBar, Copy, Hexagon, Layers, PlayCircle, SlidersHorizontal } from "lucide-react";
+import { BookOpen, ChartBar, Compass, Copy, Hexagon, Layers, PlayCircle, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,10 +17,11 @@ import type { Replay } from "./replay";
 import { ProfileEditor, SettingsEditor } from "./profile-editor";
 import { Showdown } from "./showdown";
 import { StrategyLibrary } from "./strategy-library";
+import { Tour } from "./tour";
 import { fullTitle } from "./view-titles";
 
 /** "robots" only exists on phones, where the settings panel gets its own screen. */
-type View = "showdown" | "match" | "robots" | "strategies" | "rules" | "guide";
+export type View = "showdown" | "match" | "robots" | "strategies" | "rules" | "guide";
 
 /** Shareable paths. The home page stays `/` and still opens the showdown. */
 const VIEW_PATH: Record<View, string> = {
@@ -53,6 +54,9 @@ const MOBILE_NAV: { view: View; label: string; icon: React.ComponentType<{ class
   { view: "guide", label: "Guide", icon: BookOpen },
 ];
 
+/** Set once someone finishes or skips the tour, so it only opens by itself on their first visit. */
+const TOUR_SEEN_KEY = "biobuzz-tour-seen";
+
 export function Simulator({ initialView = "showdown" }: { initialView?: View }) {
   const [profiles, setProfiles] = useState<[RobotProfile, RobotProfile]>([{ ...PRESETS.Average }, { ...PRESETS.Average }]);
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
@@ -62,6 +66,8 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
   /** Showdown matches picked for the Match viewer. `replayKey` restarts the viewer on each new pick. */
   const [replay, setReplay] = useState<Replay | null>(null);
   const [replayKey, setReplayKey] = useState(0);
+  /** The step the tour opens at, or null while it's closed. */
+  const [tourStart, setTourStart] = useState<number | null>(null);
   const isMobile = useIsMobile();
 
   const view: View = !isMobile && tab === "robots" ? "showdown" : tab;
@@ -79,16 +85,34 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
     bump();
   };
 
-  const go = (v: View) => {
+  /** `replace` swaps the history entry instead of adding one, so the tour doesn't fill up the Back button. */
+  const go = (v: View, { replace = false } = {}) => {
     setTab(v);
     const next = pathFor(v);
     if (window.location.pathname !== next) {
       // Set the title first: Google Analytics records a page view on the URL change and reads the title then.
       document.title = fullTitle(v);
-      window.history.pushState({ view: v }, "", next);
+      window.history[replace ? "replaceState" : "pushState"]({ view: v }, "", next);
     }
     if (isMobile) window.scrollTo({ top: 0 });
   };
+
+  /** `source` says what opened it, for Google Analytics ("first_visit", "header", "guide"). */
+  const startTour = (source: string, step = 1) => {
+    track("tour_started", { source });
+    setTourStart(step);
+  };
+
+  // Offer the tour on someone's first visit. Storage can be blocked (private windows), and then it just isn't offered.
+  useEffect(() => {
+    let seen = true;
+    try {
+      seen = localStorage.getItem(TOUR_SEEN_KEY) !== null;
+    } catch {}
+    if (seen) return;
+    const id = setTimeout(() => setTourStart(0), 0);
+    return () => clearTimeout(id);
+  }, []);
 
   // Tell Google Analytics what people change, a moment after they stop (so a slider drag is one event).
   const reported = useRef<Setup>({ profiles, settings, custom });
@@ -117,7 +141,10 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
         <div className="flex flex-wrap items-center gap-2">
           <Hexagon className="size-6 fill-amber-400 text-amber-500" />
           <h1 className="text-xl font-bold tracking-tight lg:text-2xl">BIOBUZZ Strategy Lab</h1>
-          <Button variant="outline" size="sm" className="ml-auto hidden lg:inline-flex" onClick={() => go("guide")}>
+          <Button variant="ghost" size="sm" className="ml-auto hidden lg:inline-flex" onClick={() => startTour("header")}>
+            <Compass /> Take the tour
+          </Button>
+          <Button variant="outline" size="sm" className="hidden lg:inline-flex" data-tour="help" onClick={() => go("guide")}>
             <BookOpen /> How it works
           </Button>
         </div>
@@ -133,13 +160,13 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
             !showRobots && "hidden",
           )}
         >
-          <Card>
+          <Card data-tour="robot-panel">
             <CardContent>
               <Tabs defaultValue="r1">
                 <TabsList className="w-full">
                   <TabsTrigger value="r1">Robot 1</TabsTrigger>
                   <TabsTrigger value="r2">Robot 2</TabsTrigger>
-                  <TabsTrigger value="game">Game</TabsTrigger>
+                  <TabsTrigger value="game" data-tour="game-tab">Game</TabsTrigger>
                 </TabsList>
                 {([0, 1] as const).map((i) => (
                   <TabsContent key={i} value={`r${i + 1}`} className="space-y-4 pt-3">
@@ -237,7 +264,7 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
               <Assumptions />
             </TabsContent>
             <TabsContent value="guide" className="space-y-4 lg:pt-3">
-              <Guide />
+              <Guide onStartTour={() => startTour("guide")} />
               {isMobile && <Assumptions />}
             </TabsContent>
           </Tabs>
@@ -256,6 +283,7 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
                 <button
                   type="button"
                   onClick={() => go(v)}
+                  data-tour={v === "guide" ? "help" : undefined}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex h-16 w-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
@@ -272,6 +300,21 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
           })}
         </ul>
       </nav>
+
+      {tourStart !== null && (
+        <Tour
+          startAt={tourStart}
+          isMobile={isMobile}
+          onNavigate={(v) => go(v, { replace: true })}
+          onClose={(finished, step) => {
+            track(finished ? "tour_finished" : "tour_skipped", { step });
+            try {
+              localStorage.setItem(TOUR_SEEN_KEY, "1");
+            } catch {}
+            setTourStart(null);
+          }}
+        />
+      )}
     </div>
   );
 }

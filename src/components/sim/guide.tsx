@@ -1,5 +1,6 @@
-import { BookOpen, ChartBar, Gauge, Lightbulb, ListChecks, PlayCircle, Settings2, TriangleAlert } from "lucide-react";
+import { BookOpen, ChartBar, Compass, Gauge, Lightbulb, ListChecks, PlayCircle, Settings2, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const STEPS = [
@@ -73,7 +74,7 @@ const LIMITS = [
   "See Rules & assumptions for exactly what comes from the manual and what is an estimate.",
 ];
 
-export function Guide() {
+export function Guide({ onStartTour }: { onStartTour: () => void }) {
   return (
     <div className="space-y-4">
       <Card>
@@ -85,10 +86,15 @@ export function Guide() {
             BIOBUZZ Strategy Lab answers one question: <strong>which gameplay strategy scores the most, given how good your robots are?</strong> It plays thousands of virtual BIOBUZZ matches in seconds. Two alliances of two robots collect POLLEN and NECTAR, launch them into their HIVE, claim FLOWERS in the last 60 seconds, and park. Each alliance follows a strategy, and the simulator adds up who wins, by how much, and where the points came from.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm sm:grid-cols-3">
-          <Fact label="One match" value="30 s AUTO · 8 s transition · 2:00 TELEOP" />
-          <Fact label="Every element tracked" value="40 POLLEN, 16 NECTAR, 4 FLOWERS, 2 HIVES" />
-          <Fact label="Scoring" value="Straight from the 2026–27 Competition Manual" />
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 text-sm sm:grid-cols-3">
+            <Fact label="One match" value="30 s AUTO · 8 s transition · 2:00 TELEOP" />
+            <Fact label="Every element tracked" value="40 POLLEN, 16 NECTAR, 4 FLOWERS, 2 HIVES" />
+            <Fact label="Scoring" value="Straight from the 2026–27 Competition Manual" />
+          </div>
+          <Button variant="outline" size="sm" className="max-sm:h-10 max-sm:w-full" onClick={onStartTour}>
+            <Compass /> Take the guided tour
+          </Button>
         </CardContent>
       </Card>
 

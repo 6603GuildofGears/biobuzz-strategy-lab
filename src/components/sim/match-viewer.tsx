@@ -173,7 +173,7 @@ export function MatchViewer({
               onExit={onExitReplay}
             />
           )}
-          <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
+          <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap" data-tour="match-controls">
             <StrategyPick
               label="Red alliance"
               color="red"
@@ -246,7 +246,7 @@ export function MatchViewer({
             <ScoreBox color="blue" name={blue.name} score={frame?.score.blue ?? 0} final={done ? result?.blue.total : undefined} />
           </div>
 
-          <div className="mx-auto max-w-[640px]">
+          <div className="mx-auto max-w-[640px]" data-tour="field">
             <FieldView frame={frame} robotLabels={["1", "2", "1", "2"]} />
           </div>
 

@@ -67,7 +67,7 @@ export function StrategyLibrary({
         ))}
       </div>
 
-      <Card>
+      <Card data-tour="custom-strategy">
         <CardHeader>
           <CardTitle>Custom strategy</CardTitle>
           <CardDescription>
