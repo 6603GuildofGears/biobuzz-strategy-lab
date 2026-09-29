@@ -65,17 +65,18 @@ export function MatchViewer({
   onExitReplay: () => void;
 }) {
   const first = replay?.matches[0];
+  const openedSeed = first?.seed;
   const [redId, setRedId] = useState(first?.redId ?? strategies[0].id);
   const [blueId, setBlueId] = useState(first?.blueId ?? strategies[1].id);
-  const [seed, setSeed] = useState(first?.seed ?? 42);
-  const [seedText, setSeedText] = useState(String(first?.seed ?? 42));
+  const [seed, setSeed] = useState(openedSeed ?? 0);
+  const [seedText, setSeedText] = useState(openedSeed != null ? String(openedSeed) : "");
   const [replayIndex, setReplayIndex] = useState(0);
   const byId = (id: string, fallback: Strategy) => strategies.find((s) => s.id === id) ?? fallback;
   const red = byId(redId, strategies[0]);
   const blue = byId(blueId, strategies[1]);
   const play = (r: string, b: string, s: number) =>
     simulateMatch({ red: byId(r, strategies[0]), blue: byId(b, strategies[1]), profiles, settings, seed: s, record: true });
-  const [result, setResult] = useState<MatchResult | null>(() => play(redId, blueId, seed));
+  const [result, setResult] = useState<MatchResult | null>(() => (openedSeed != null ? play(redId, blueId, openedSeed) : null));
   const [frameIdx, setFrameIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(4);
@@ -101,8 +102,17 @@ export function MatchViewer({
   };
 
   useEffect(() => {
+    if (openedSeed != null) return;
+    const s = Math.floor(Math.random() * 1e6);
+    const id = setTimeout(() => load(redId, blueId, s, "new_seed"), 0);
+    return () => clearTimeout(id);
+    // A fresh seed on each visit. The timeout keeps this out of the render itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (result === null) return;
     setSeedText(String(seed));
-  }, [seed]);
+  }, [seed, result]);
   const showReplay = (i: number) => {
     const m = replay?.matches[i];
     if (!m) return;
@@ -215,7 +225,7 @@ export function MatchViewer({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Seed {seed}. Both alliances use the same robot sliders, so only strategy and luck differ. The Strategy showdown plays matches with this exact
+            Seed {result ? seed : "…"}. Both alliances use the same robot sliders, so only strategy and luck differ. The Strategy showdown plays matches with this exact
             same simulation.
           </p>
         </CardHeader>
