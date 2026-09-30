@@ -140,7 +140,7 @@ export function Showdown({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2" data-tour="strategy-picks">
+          <div className="flex flex-wrap gap-2">
             {strategies.map((s) => {
               const on = enabled.has(s.id);
               return (

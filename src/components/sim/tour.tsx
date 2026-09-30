@@ -42,21 +42,9 @@ export const TOUR_STEPS: Step[] = [
     body: "Not sure of your numbers yet? Pick Rookie, Average or Elite, then fine-tune. On a computer, hover the ⓘ next to a slider to see what it means.",
   },
   {
-    target: "game-tab",
-    view: "robots",
-    title: "Game assumptions",
-    body: "The Game tab holds what the manual doesn't pin down, like how many elements tip the HIVE. The defaults are a good place to start.",
-  },
-  {
-    target: "strategy-picks",
-    view: "showdown",
-    title: "Step 2: Choose strategies to compare",
-    body: "Tap a strategy to turn it on or off. Every strategy you pick plays every other one, from both sides of the field.",
-  },
-  {
     target: "run",
     view: "showdown",
-    title: "Run the showdown",
+    title: "Step 2: Run the showdown",
     body: "Press Run to simulate. More matches per pairing take longer but give steadier numbers. If you change a slider, an amber badge reminds you to rerun.",
   },
   {

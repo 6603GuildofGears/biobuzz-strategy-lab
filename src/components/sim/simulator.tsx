@@ -165,7 +165,7 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
                 <TabsList className="w-full">
                   <TabsTrigger value="r1">Robot 1</TabsTrigger>
                   <TabsTrigger value="r2">Robot 2</TabsTrigger>
-                  <TabsTrigger value="game" data-tour="game-tab">Game</TabsTrigger>
+                  <TabsTrigger value="game">Game</TabsTrigger>
                 </TabsList>
                 {([0, 1] as const).map((i) => (
                   <TabsContent key={i} value={`r${i + 1}`} className="space-y-4 pt-3">
