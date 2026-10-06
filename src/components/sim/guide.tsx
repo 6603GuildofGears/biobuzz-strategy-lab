@@ -1,6 +1,7 @@
 import { BookOpen, ChartBar, Compass, Gauge, Lightbulb, ListChecks, PlayCircle, Settings2, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FeedbackLink } from "./feedback-link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const STEPS = [
@@ -91,6 +92,7 @@ export function Guide({ onStartTour }: { onStartTour: () => void }) {
           <Button variant="outline" size="sm" className="max-sm:h-10 max-sm:w-full" onClick={onStartTour}>
             <Compass /> Take the guided tour
           </Button>
+          <FeedbackLink source="guide" label="Send us feedback" className="max-sm:h-10 max-sm:w-full sm:ml-2" />
         </CardContent>
       </Card>
 

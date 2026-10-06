@@ -11,6 +11,7 @@ import { DEFAULT_SETTINGS, PRESETS, STRATEGIES } from "@/lib/sim/strategies";
 import type { GameSettings, RobotProfile } from "@/lib/sim/types";
 import { cn } from "@/lib/utils";
 import { Assumptions } from "./assumptions";
+import { FeedbackLink } from "./feedback-link";
 import { Guide } from "./guide";
 import { MatchViewer } from "./match-viewer";
 import type { Replay } from "./replay";
@@ -140,12 +141,13 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
         <div className="flex flex-wrap items-center gap-2">
           <Hexagon className="size-6 fill-amber-400 text-amber-500" />
           <h1 className="text-xl font-bold tracking-tight lg:text-2xl">BIOBUZZ Strategy Lab</h1>
-          <Button variant="ghost" size="sm" className="ml-auto hidden lg:inline-flex" onClick={() => startTour("header")}>
+          <Button variant="ghost" size="sm" className="hidden lg:ml-auto lg:inline-flex" onClick={() => startTour("header")}>
             <Compass /> Take the tour
           </Button>
           <Button variant="outline" size="sm" className="hidden lg:inline-flex" data-tour="help" onClick={() => go("guide")}>
             <BookOpen /> How it works
           </Button>
+          <FeedbackLink source="header" className="ml-auto lg:ml-0" />
         </div>
         <p className={cn("max-w-3xl text-sm text-muted-foreground", view !== "showdown" && "hidden lg:block")}>
           Monte Carlo simulator for the 2026–27 FTC game. Set how fast and accurate your robots are, then play the strategies against each other to see which one wins the most. Built by FTC Team 6603, Guild of Gears.

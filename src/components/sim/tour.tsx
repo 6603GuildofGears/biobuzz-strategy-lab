@@ -83,7 +83,7 @@ export const TOUR_STEPS: Step[] = [
   {
     target: "help",
     title: "You're all set",
-    body: "The full guide explains every slider and every result. You can replay this tour from there any time.",
+    body: "The full guide explains every slider and every result. You can replay this tour from there any time. Found a bug or have an idea? Tell us with the Feedback button at the top of the page.",
   },
 ];
 
