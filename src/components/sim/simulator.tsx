@@ -14,6 +14,7 @@ import { Assumptions } from "./assumptions";
 import { FeedbackLink } from "./feedback-link";
 import { FeedbackPrompt } from "./feedback-prompt";
 import { Guide } from "./guide";
+import { ThemeToggle } from "./theme-toggle";
 import { MatchViewer } from "./match-viewer";
 import type { Replay } from "./replay";
 import { ProfileEditor, SettingsEditor } from "./profile-editor";
@@ -149,6 +150,7 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
             <BookOpen /> How it works
           </Button>
           <FeedbackLink source="header" className="ml-auto lg:ml-0" />
+          <ThemeToggle />
         </div>
         <p className={cn("max-w-3xl text-sm text-muted-foreground", view !== "showdown" && "hidden lg:block")}>
           Monte Carlo simulator for the 2026–27 FTC game. Set how fast and accurate your robots are, then play the strategies against each other to see which one wins the most. Built by FTC Team 6603, Guild of Gears.

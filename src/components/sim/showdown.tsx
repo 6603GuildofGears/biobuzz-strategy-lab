@@ -17,6 +17,7 @@ import type { GameSettings, RobotProfile, Strategy } from "@/lib/sim/types";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
 import type { Replay } from "./replay";
+import { useIsDark } from "./theme-toggle";
 
 const MATCH_OPTIONS = [20, 50, 100, 200];
 
@@ -68,6 +69,12 @@ export function Showdown({
   const [error, setError] = useState<string | null>(null);
   const runId = useRef(0);
   const isMobile = useIsMobile();
+  const dark = useIsDark();
+  // Recharts draws with fixed grays made for a white page, so give it colors for the current theme.
+  const axis = { fill: dark ? "#a1a1aa" : "#52525b" };
+  const tooltipStyle = dark
+    ? { fontSize: 12, background: "#262626", border: "1px solid #3f3f46", color: "#fafafa" }
+    : { fontSize: 12 };
 
   const selected = strategies.filter((s) => enabled.has(s.id));
 
@@ -186,7 +193,7 @@ export function Showdown({
               {running ? "Simulating…" : `Run ${selected.length * selected.length * Math.ceil(perPair / 2)} matches`}
             </Button>
             {selected.length < 2 && <span className="text-xs text-destructive">Pick at least two strategies.</span>}
-            {stale && !running && <Badge variant="outline" className="border-amber-500 text-amber-600">Sliders changed, rerun to update</Badge>}
+            {stale && !running && <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400">Sliders changed, rerun to update</Badge>}
           </div>
           {running && (
             <div className="space-y-1">
@@ -274,7 +281,7 @@ export function Showdown({
                       <TableCell className="font-medium whitespace-normal">{s.name}</TableCell>
                       <TableCell className="text-right tabular-nums">{pct((s.wins + s.ties * 0.5) / s.matches)}</TableCell>
                       <TableCell className="hidden text-right tabular-nums sm:table-cell">{s.avgScore.toFixed(1)}</TableCell>
-                      <TableCell className={cn("text-right tabular-nums", s.avgMargin >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                      <TableCell className={cn("text-right tabular-nums", s.avgMargin >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                         {s.avgMargin >= 0 ? "+" : ""}
                         {s.avgMargin.toFixed(1)}
                       </TableCell>
@@ -302,10 +309,10 @@ export function Showdown({
                 <div className="h-[340px] max-sm:-mx-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} layout="vertical" margin={isMobile ? { left: 0, right: 8 } : { left: 12, right: 12 }}>
-                      <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.4} />
-                      <XAxis type="number" fontSize={11} />
-                      <YAxis type="category" dataKey="name" width={isMobile ? 96 : 150} fontSize={isMobile ? 10 : 11} />
-                      <Tooltip contentStyle={{ fontSize: 12 }} />
+                      <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.4} stroke={dark ? "#52525b" : "#ccc"} />
+                      <XAxis type="number" fontSize={11} tick={axis} />
+                      <YAxis type="category" dataKey="name" width={isMobile ? 96 : 150} fontSize={isMobile ? 10 : 11} tick={axis} />
+                      <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: dark ? "#fafafa" : undefined }} cursor={{ fill: dark ? "#ffffff14" : "#0000000d" }} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       {SERIES.map((s) => (
                         <Bar key={s.key} dataKey={s.key} name={s.label} stackId="a" fill={s.color} />

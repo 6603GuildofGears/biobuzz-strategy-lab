@@ -458,11 +458,11 @@ function ReplayBanner({
         The showdown scored this match <strong className="tabular-nums">{match.redTotal}–{match.blueTotal}</strong> (red–blue). This replay scores{" "}
         <strong className="tabular-nums">{replayed.red}–{replayed.blue}</strong>.{" "}
         {same ? (
-          <span className="font-medium text-emerald-600">Identical: this is the same match.</span>
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">Identical: this is the same match.</span>
         ) : slidersChanged ? (
-          <span className="font-medium text-rose-600">Different, because the sliders changed after the showdown ran. Rerun the showdown to match.</span>
+          <span className="font-medium text-rose-600 dark:text-rose-400">Different, because the sliders changed after the showdown ran. Rerun the showdown to match.</span>
         ) : (
-          <span className="font-medium text-rose-600">Different. That shouldn&apos;t happen, so please report it.</span>
+          <span className="font-medium text-rose-600 dark:text-rose-400">Different. That shouldn&apos;t happen, so please report it.</span>
         )}
       </p>
     </div>
