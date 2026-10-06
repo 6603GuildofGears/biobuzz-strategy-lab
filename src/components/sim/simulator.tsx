@@ -12,6 +12,7 @@ import type { GameSettings, RobotProfile } from "@/lib/sim/types";
 import { cn } from "@/lib/utils";
 import { Assumptions } from "./assumptions";
 import { FeedbackLink } from "./feedback-link";
+import { FeedbackPrompt } from "./feedback-prompt";
 import { Guide } from "./guide";
 import { MatchViewer } from "./match-viewer";
 import type { Replay } from "./replay";
@@ -294,6 +295,8 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
           })}
         </ul>
       </nav>
+
+      <FeedbackPrompt paused={tourStart !== null} />
 
       {tourStart !== null && (
         <Tour
