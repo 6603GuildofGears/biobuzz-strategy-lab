@@ -1,9 +1,12 @@
 "use client";
 
+import { Dices } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { markRandom } from "@/lib/analytics";
 import { launchHeight, physicsReach } from "@/lib/sim/shooting";
+import { ROBOT_RANGES, randomRobot } from "@/lib/sim/random-robot";
 import { PRESETS } from "@/lib/sim/strategies";
 import type { Drivetrain, GameSettings, RobotProfile } from "@/lib/sim/types";
 import { SliderRow, pct, secs } from "./slider-row";
@@ -24,6 +27,9 @@ export function ProfileEditor({
             {name}
           </Button>
         ))}
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onChange(markRandom(randomRobot()))}>
+          <Dices /> Random
+        </Button>
       </div>
 
       <Group title="Robot specs">
@@ -31,9 +37,7 @@ export function ProfileEditor({
           label="Width"
           hint="Frame width, side to side. The starting size limit is 18 inches."
           value={profile.widthIn}
-          min={10}
-          max={18}
-          step={0.5}
+          {...ROBOT_RANGES.widthIn}
           format={(v) => `${v.toFixed(1)} in`}
           onChange={(v) => set("widthIn", v)}
         />
@@ -41,9 +45,7 @@ export function ProfileEditor({
           label="Length"
           hint="Frame length, front to back. Bigger robots take more room in the LOADING ZONE and have to swing wider around the HIVE."
           value={profile.lengthIn}
-          min={10}
-          max={18}
-          step={0.5}
+          {...ROBOT_RANGES.lengthIn}
           format={(v) => `${v.toFixed(1)} in`}
           onChange={(v) => set("lengthIn", v)}
         />
@@ -51,9 +53,7 @@ export function ProfileEditor({
           label="Height when extended"
           hint="Tallest the robot gets with lifts and arms up. Robots start inside an 18 inch cube and can extend to 29 inches after the match starts (R105). Shots leave the launcher and climb steeply, so only a robot taller than the ball's path, pressed right against the front of a shooter, can block its shots. Matters most for defenders."
           value={profile.heightIn}
-          min={12}
-          max={29}
-          step={1}
+          {...ROBOT_RANGES.heightIn}
           format={(v) => `${v.toFixed(0)} in`}
           onChange={(v) => set("heightIn", v)}
         />
@@ -61,9 +61,7 @@ export function ProfileEditor({
           label="Weight"
           hint="Heavier robots push lighter ones aside in a collision. A tank drive pushes harder than mecanum at the same weight."
           value={profile.weightLb}
-          min={8}
-          max={42}
-          step={1}
+          {...ROBOT_RANGES.weightLb}
           format={(v) => `${v.toFixed(0)} lb`}
           onChange={(v) => set("weightLb", v)}
         />
@@ -111,9 +109,7 @@ export function ProfileEditor({
           label="Acceleration"
           hint="How quickly the robot gets up to speed. Slowing down and turning take longer than speeding up, because of the robot's momentum."
           value={profile.acceleration}
-          min={2}
-          max={20}
-          step={0.5}
+          {...ROBOT_RANGES.acceleration}
           format={(v) => `${v.toFixed(1)} ft/s²`}
           onChange={(v) => set("acceleration", v)}
         />
@@ -121,9 +117,7 @@ export function ProfileEditor({
           label="Intake width"
           hint="How much of the front the intake covers. Robots drive over balls to pick them up, and any ball that goes into the intake comes in, so a full-width intake needs less lining up and scoops up neighbors too."
           value={profile.intakeWidth}
-          min={0.25}
-          max={1}
-          step={0.05}
+          {...ROBOT_RANGES.intakeWidth}
           format={(v) => `${Math.round(v * 100)}% of front (${(v * profile.widthIn).toFixed(1)} in)`}
           onChange={(v) => set("intakeWidth", v)}
         />
@@ -131,9 +125,7 @@ export function ProfileEditor({
           label="Carry capacity"
           hint="Elements the robot can hold at once. The rules cap this at 4 (G407). A smaller intake starts with the rest of its preload on the floor."
           value={profile.capacity}
-          min={1}
-          max={4}
-          step={1}
+          {...ROBOT_RANGES.capacity}
           format={(v) => `${v.toFixed(0)} elements`}
           onChange={(v) => set("capacity", v)}
         />
@@ -141,9 +133,7 @@ export function ProfileEditor({
           label="Shot speed"
           hint="How fast a launched element leaves the robot. The upward CELL opening is about 5 ft off the floor, so a ball needs about 15.5 ft/s just to get up there. Faster shots can score from farther away."
           value={profile.shotSpeed}
-          min={14}
-          max={40}
-          step={1}
+          {...ROBOT_RANGES.shotSpeed}
           format={(v) => {
             const reach = physicsReach(v, launchHeight(profile));
             return reach > 0 ? `${v.toFixed(0)} ft/s (reaches ${reach.toFixed(1)} ft)` : `${v.toFixed(0)} ft/s (can't reach)`;
@@ -154,9 +144,7 @@ export function ProfileEditor({
           label="Launcher height"
           hint="How high the ball leaves the launcher. A defender standing in front of you can knock down shots that are still low, so a higher launcher clears it sooner. It also means less climb to the CELL, so the same shot speed reaches a little farther."
           value={profile.launchHeightIn}
-          min={8}
-          max={28}
-          step={0.5}
+          {...ROBOT_RANGES.launchHeightIn}
           format={(v) => `${v.toFixed(1)} in`}
           onChange={(v) => set("launchHeightIn", v)}
         />
@@ -167,9 +155,7 @@ export function ProfileEditor({
           label="Drive speed"
           hint="Top straight-line speed. Acceleration is set separately under Robot specs."
           value={profile.driveSpeed}
-          min={1.5}
-          max={10}
-          step={0.25}
+          {...ROBOT_RANGES.driveSpeed}
           format={(v) => `${v.toFixed(2)} ft/s`}
           onChange={(v) => set("driveSpeed", v)}
         />
@@ -177,9 +163,7 @@ export function ProfileEditor({
           label="Intake time / element"
           hint="How long the rollers take to pull a ball in. Robots pick balls up on the run, but they can only drive over a ball as fast as the intake can swallow it (about 1 ft per intake time), so a quicker intake means less slowing down."
           value={profile.intakeTime}
-          min={0.05}
-          max={1.5}
-          step={0.05}
+          {...ROBOT_RANGES.intakeTime}
           format={secs}
           onChange={(v) => set("intakeTime", v)}
         />
@@ -187,9 +171,7 @@ export function ProfileEditor({
           label="Launch time / element"
           hint="Time between consecutive launches."
           value={profile.launchTime}
-          min={0.05}
-          max={2}
-          step={0.05}
+          {...ROBOT_RANGES.launchTime}
           format={secs}
           onChange={(v) => set("launchTime", v)}
         />
@@ -197,18 +179,14 @@ export function ProfileEditor({
           label="Align / aim per trip"
           hint="Time lost each time the robot lines up to launch or to use a FLOWER. After that it fires its whole load at the launch-time pace. A bump while shooting costs a quick correction (a quarter of this) and makes the next shot a little less accurate."
           value={profile.alignTime}
-          min={0}
-          max={3}
-          step={0.05}
+          {...ROBOT_RANGES.alignTime}
           format={secs}
           onChange={(v) => set("alignTime", v)}
         />
         <SliderRow
           label="FLOWER place time / element"
           value={profile.flowerTime}
-          min={0.3}
-          max={5}
-          step={0.1}
+          {...ROBOT_RANGES.flowerTime}
           format={secs}
           onChange={(v) => set("flowerTime", v)}
         />
@@ -216,9 +194,7 @@ export function ProfileEditor({
           label="Launch range"
           hint="How far this launcher is built to shoot. Shot speed can cut that shorter. Shots only go in from in front of your upward CELL. Accuracy drops the farther away you shoot."
           value={profile.launchRange}
-          min={2.5}
-          max={10}
-          step={0.25}
+          {...ROBOT_RANGES.launchRange}
           format={(v) => `${v.toFixed(2)} ft`}
           onChange={(v) => set("launchRange", v)}
         />
@@ -229,27 +205,21 @@ export function ProfileEditor({
           label="POLLEN launch accuracy"
           hint="Chance a shot goes in from close range. At the robot's longest range it drops to half of this."
           value={profile.pollenAccuracy}
-          min={0.2}
-          max={1}
-          step={0.01}
+          {...ROBOT_RANGES.pollenAccuracy}
           format={pct}
           onChange={(v) => set("pollenAccuracy", v)}
         />
         <SliderRow
           label="NECTAR launch accuracy"
           value={profile.nectarAccuracy}
-          min={0.2}
-          max={1}
-          step={0.01}
+          {...ROBOT_RANGES.nectarAccuracy}
           format={pct}
           onChange={(v) => set("nectarAccuracy", v)}
         />
         <SliderRow
           label="FLOWER placement accuracy"
           value={profile.flowerAccuracy}
-          min={0.2}
-          max={1}
-          step={0.01}
+          {...ROBOT_RANGES.flowerAccuracy}
           format={pct}
           onChange={(v) => set("flowerAccuracy", v)}
         />
@@ -260,18 +230,14 @@ export function ProfileEditor({
           label="AUTO reliability"
           hint="Chance the AUTO routine runs. Otherwise the robot sits still (no LEAVE points)."
           value={profile.autoReliability}
-          min={0}
-          max={1}
-          step={0.01}
+          {...ROBOT_RANGES.autoReliability}
           format={pct}
           onChange={(v) => set("autoReliability", v)}
         />
         <SliderRow
           label="AUTO speed vs TELEOP"
           value={profile.autoSpeed}
-          min={0.2}
-          max={1}
-          step={0.05}
+          {...ROBOT_RANGES.autoSpeed}
           format={pct}
           onChange={(v) => set("autoSpeed", v)}
         />

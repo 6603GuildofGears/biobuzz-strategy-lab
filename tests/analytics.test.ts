@@ -4,7 +4,8 @@
  */
 import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
-import { presetName, reportChanges, type Setup } from "../src/lib/analytics";
+import { markRandom, presetName, reportChanges, type Setup } from "../src/lib/analytics";
+import { randomRobot } from "../src/lib/sim/random-robot";
 import { DEFAULT_SETTINGS, PRESETS } from "../src/lib/sim/strategies";
 
 let sent: unknown[][] = [];
@@ -41,5 +42,14 @@ describe("Analytics events", () => {
   test("presetName recognizes presets and custom robots", () => {
     assert.equal(presetName({ ...PRESETS.Rookie }), "Rookie");
     assert.equal(presetName({ ...PRESETS.Rookie, driveSpeed: 9 }), "custom");
+  });
+  test("random robots are reported as random until someone changes them", () => {
+    const r = markRandom(randomRobot());
+    assert.equal(presetName({ ...r }), "random");
+    assert.equal(presetName({ ...r, driveSpeed: r.driveSpeed + 0.25 }), "custom");
+    const after = setup();
+    after.profiles[0] = { ...r };
+    reportChanges(setup(), after);
+    assert.deepEqual(sent, [["event", "robot_preset_selected", { robot: 1, preset: "random" }]]);
   });
 });

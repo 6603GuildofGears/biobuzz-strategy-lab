@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-is-mobile";
-import { reportChanges, track, type Setup } from "@/lib/analytics";
+import { markRandom, reportChanges, track, type Setup } from "@/lib/analytics";
+import { randomRobot } from "@/lib/sim/random-robot";
 import { DEFAULT_SETTINGS, PRESETS, STRATEGIES } from "@/lib/sim/strategies";
 import type { GameSettings, RobotProfile } from "@/lib/sim/types";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,8 @@ const TOUR_SEEN_KEY = "biobuzz-tour-seen";
 
 export function Simulator({ initialView = "showdown" }: { initialView?: View }) {
   const [profiles, setProfiles] = useState<[RobotProfile, RobotProfile]>([{ ...PRESETS.Average }, { ...PRESETS.Average }]);
+  /** False until the random starting robots are in, so the showdown and match viewer don't first run on Average ones. */
+  const [robotsReady, setRobotsReady] = useState(false);
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [version, setVersion] = useState(0);
   const [tab, setTab] = useState<View>(initialView);
@@ -118,6 +121,19 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
 
   // Tell Google Analytics what people change, a moment after they stop (so a slider drag is one event).
   const reported = useRef<Setup>({ profiles, settings });
+
+  // Start from two different random robots near Average, so visitors don't all get the same showdown. This
+  // happens after the page loads because the static HTML is built with Average robots. The random robots
+  // aren't reported as a change.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const start: [RobotProfile, RobotProfile] = [markRandom(randomRobot()), markRandom(randomRobot())];
+      reported.current = { ...reported.current, profiles: start };
+      setProfiles(start);
+      setRobotsReady(true);
+    }, 0);
+    return () => clearTimeout(id);
+  }, []);
   useEffect(() => {
     const id = setTimeout(() => {
       const now: Setup = { profiles, settings };
@@ -175,7 +191,8 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
                 {([0, 1] as const).map((i) => (
                   <TabsContent key={i} value={`r${i + 1}`} className="space-y-4 pt-3">
                     <p className="text-xs text-muted-foreground">
-                      Applies to Robot {i + 1} on both alliances, so matchups stay fair.
+                      Applies to Robot {i + 1} on both alliances, so matchups stay fair. Each visit starts with random values near
+                      Average; pick a preset to start from one instead.
                     </p>
                     <ProfileEditor profile={profiles[i]} onChange={(p) => setProfile(i, p)} />
                     <Button
@@ -228,31 +245,35 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
               <TabsTrigger value="guide">How to use</TabsTrigger>
             </TabsList>
             <TabsContent value="showdown" className="lg:pt-3">
-              <Showdown
-                strategies={strategies}
-                profiles={profiles}
-                settings={settings}
-                configVersion={version}
-                onWatch={(r) => {
-                  const [m] = r.matches;
-                  const name = (id: string) => strategies.find((s) => s.id === id)?.name ?? id;
-                  if (m) track("showdown_replay_opened", { red_strategy: name(m.redId), blue_strategy: name(m.blueId) });
-                  setReplay(r);
-                  setReplayKey((k) => k + 1);
-                  go("match");
-                }}
-              />
+              {robotsReady && (
+                <Showdown
+                  strategies={strategies}
+                  profiles={profiles}
+                  settings={settings}
+                  configVersion={version}
+                  onWatch={(r) => {
+                    const [m] = r.matches;
+                    const name = (id: string) => strategies.find((s) => s.id === id)?.name ?? id;
+                    if (m) track("showdown_replay_opened", { red_strategy: name(m.redId), blue_strategy: name(m.blueId) });
+                    setReplay(r);
+                    setReplayKey((k) => k + 1);
+                    go("match");
+                  }}
+                />
+              )}
             </TabsContent>
             <TabsContent value="match" className="lg:pt-3">
-              <MatchViewer
-                key={replayKey}
-                strategies={strategies}
-                profiles={profiles}
-                settings={settings}
-                configVersion={version}
-                replay={replay}
-                onExitReplay={() => setReplay(null)}
-              />
+              {robotsReady && (
+                <MatchViewer
+                  key={replayKey}
+                  strategies={strategies}
+                  profiles={profiles}
+                  settings={settings}
+                  configVersion={version}
+                  replay={replay}
+                  onExitReplay={() => setReplay(null)}
+                />
+              )}
             </TabsContent>
             <TabsContent value="strategies" className="lg:pt-3">
               <StrategyLibrary strategies={STRATEGIES} />
