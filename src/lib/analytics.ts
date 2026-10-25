@@ -20,10 +20,20 @@ export function track(event: string, params: Params = {}) {
   window.gtag("event", event, params);
 }
 
-/** The preset a robot exactly matches ("Rookie", "Average", "Elite"), or "custom". */
+/** Robots from randomRobot (the starting robots and the Random button), so they aren't reported as "custom". */
+const randomRobots: RobotProfile[] = [];
+
+/** Remember a random robot for presetName. Returns the robot. */
+export function markRandom(p: RobotProfile) {
+  randomRobots.push(p);
+  return p;
+}
+
+/** The preset a robot exactly matches ("Rookie", "Average", "Elite"), "random" if it's an untouched random robot, or "custom". */
 export function presetName(p: RobotProfile) {
   const keys = Object.keys(p) as (keyof RobotProfile)[];
-  return Object.entries(PRESETS).find(([, q]) => keys.every((k) => q[k] === p[k]))?.[0] ?? "custom";
+  const same = (q: RobotProfile) => keys.every((k) => q[k] === p[k]);
+  return Object.entries(PRESETS).find(([, q]) => same(q))?.[0] ?? (randomRobots.some(same) ? "random" : "custom");
 }
 
 export interface Setup {
