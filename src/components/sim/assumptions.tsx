@@ -39,7 +39,7 @@ export function Assumptions() {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>What comes straight from the manual</CardTitle>
+          <CardTitle as="h2">What comes straight from the manual</CardTitle>
           <CardDescription>BIOBUZZ Competition Manual (TU02), sections 9 to 11, plus the HIVE calibration procedure.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -52,7 +52,7 @@ export function Assumptions() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Simulation assumptions</CardTitle>
+          <CardTitle as="h2">Simulation assumptions</CardTitle>
           <CardDescription>Things the manual doesn&apos;t pin down. Many can be changed on the Game tab.</CardDescription>
         </CardHeader>
         <CardContent>

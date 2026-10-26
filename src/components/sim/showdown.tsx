@@ -141,7 +141,7 @@ export function Showdown({
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Strategy showdown</CardTitle>
+          <CardTitle as="h2">Strategy showdown</CardTitle>
           <CardDescription>
             Every selected strategy plays every other one (and a mirror match) from both sides of the field. Both alliances use your robot sliders, so the only difference is strategy.
           </CardDescription>

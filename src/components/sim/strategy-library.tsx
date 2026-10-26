@@ -27,7 +27,7 @@ export function StrategyLibrary({ strategies }: { strategies: Strategy[] }) {
         {strategies.map((s) => (
           <Card key={s.id} size="sm">
             <CardHeader>
-              <CardTitle className="text-base">{s.name}</CardTitle>
+              <CardTitle as="h2" className="text-base">{s.name}</CardTitle>
               <CardDescription>{s.tagline}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">

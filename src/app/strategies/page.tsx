@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Simulator } from "@/components/sim/simulator";
-import { VIEW_TITLE } from "@/components/sim/view-titles";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: VIEW_TITLE.strategies };
+export const metadata: Metadata = pageMetadata("strategies");
 
 export default function StrategiesPage() {
   return <Simulator initialView="strategies" />;

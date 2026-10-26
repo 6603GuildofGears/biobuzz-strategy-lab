@@ -1,0 +1,5 @@
+# Everyone is welcome, including AI assistants (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended).
+User-agent: *
+Allow: /
+
+Sitemap: https://biobuzz-strategy-lab.com/sitemap.xml

@@ -1,6 +1,7 @@
 import { BookOpen, ChartBar, Compass, Gauge, Lightbulb, ListChecks, PlayCircle, Settings2, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Faq } from "./faq";
 import { FeedbackLink } from "./feedback-link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -76,11 +77,11 @@ export function Guide({ onStartTour }: { onStartTour: () => void }) {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle as="h2" className="flex items-center gap-2">
             <BookOpen className="size-5 text-amber-500" /> How this simulator works
           </CardTitle>
           <CardDescription className="text-sm leading-relaxed">
-            BIOBUZZ Strategy Lab answers one question: <strong>which gameplay strategy scores the most, given how good your robots are?</strong> It plays thousands of virtual BIOBUZZ matches in seconds. Two alliances of two robots collect POLLEN and NECTAR, launch them into their HIVE, claim FLOWERS in the last 60 seconds, and park. Each alliance follows a strategy, and the simulator adds up who wins, by how much, and where the points came from.
+            BIOBUZZ Strategy Lab is a free FTC BIOBUZZ strategy simulator. It answers one question: <strong>which gameplay strategy scores the most, given how good your robots are?</strong> It plays thousands of virtual BIOBUZZ matches in seconds. Two alliances of two robots collect POLLEN and NECTAR, launch them into their HIVE, claim FLOWERS in the last 60 seconds, and park. Each alliance follows a strategy, and the simulator adds up who wins, by how much, and where the points came from.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -151,6 +152,8 @@ export function Guide({ onStartTour }: { onStartTour: () => void }) {
         </Section>
       </div>
 
+      <Faq />
+
       <Section icon={<Settings2 className="size-4" />} title="Under the hood" description="For the curious.">
         <p className="text-sm text-muted-foreground">
           Each match is simulated in 0.1-second steps. Whenever a robot finishes a job, it picks the next one by estimating expected points per second: a shot is worth its chance of going in times its share of a 20-point tip. Robots pick balls up on the run, driving over them intake first. The robot grabs another ball only if that adds points faster than its current trip is earning them, and it shoots from the spot that earns the most points per second (closer is more accurate, but getting there takes time). Robots switch to FLOWERS at their set time, finish a tip first if they&apos;re one volley away, and leave early enough to park. They accelerate, turn at their drivetrain&apos;s rate, steer around the HIVE frame, FLOWERS and each other, and push each other based on weight and traction. The HIVE tips when the upward CELL holds about 7.5 POLLEN-weights (one NECTAR ≈ 1.67 POLLEN, from the official calibration procedure). Tipping spins the HIVE, then the elements pour out and roll. Shots follow real projectile paths, and misses bounce back onto the floor. After the buzzer everything settles before scoring. The showdown repeats all of this with different random luck for every pairing of strategies, then averages the results. It runs on several threads at once, and every match has its own seed, so any showdown match can be replayed exactly in the Match viewer. The code lives in src/lib/sim/, and docs/HOW_IT_WORKS.md walks through it.
@@ -181,7 +184,7 @@ function Section({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle as="h2" className="flex items-center gap-2 text-base">
           {icon}
           {title}
         </CardTitle>

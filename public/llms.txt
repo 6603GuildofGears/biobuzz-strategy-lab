@@ -1,0 +1,33 @@
+# BIOBUZZ Strategy Lab
+
+> Free FTC BIOBUZZ strategy simulator for the 2026–27 FIRST Tech Challenge (FTC) season, built by FTC Team 6603 Guild of Gears. Teams set how fast and accurate their robots are, then play alliance strategies against each other over hundreds of simulated matches to see which wins most often and earns the most ranking points (RP). It runs in the browser, is free, and is open source. It is not an official FIRST tool.
+
+BIOBUZZ presented by RTX is the 2026–27 FTC game. Two alliances of two robots launch POLLEN and NECTAR into their HIVE (a HIVE TIP is worth 20 points), score in FLOWERS during the last 60 seconds, and PARK. A match is 30 s AUTO, an 8 s transition and 2:00 TELEOP. RP: win 3, tie 1, SWARM (LEAVE + PARK at least 16 points), POLLINATOR 1 (4+ tips), POLLINATOR 2 (7+ tips).
+
+What the simulator reports for each strategy: win rate, RP per match ("best for qualifications"), win % ("best for playoffs"), average score and margin, HIVE tips, FLOWER points, how often it reaches the POLLINATOR thresholds, where its points come from, and a head-to-head matrix. The best strategy depends on the robots, so the answer changes with the Rookie, Average and Elite presets or a team's own measurements.
+
+## Pages
+
+- [Strategy showdown (home)](https://biobuzz-strategy-lab.com/): run every strategy against every other and rank them
+- [Guide](https://biobuzz-strategy-lab.com/guide/): how to use it, what every result means, and common BIOBUZZ strategy questions
+- [Strategies](https://biobuzz-strategy-lab.com/strategies/): the built-in alliance strategies and what each robot does
+- [Rules & assumptions](https://biobuzz-strategy-lab.com/rules/): BIOBUZZ scoring rules from the Competition Manual and what the simulator estimates
+- [Match viewer](https://biobuzz-strategy-lab.com/match/): replay one simulated match on a top-down field
+
+## Built-in strategies
+
+- **Hive Only**: Shoot POLLEN + NECTAR all match, ignore FLOWERS. Both robots cycle every POLLEN and NECTAR they can reach into the HIVE for the whole match, then park. Maximizes HIVE TIPS (20 each) and chases the POLLINATOR RPs, but leaves all FLOWER points to the opponent.
+- **Pollen Hive, Nectar Flowers**: Hive with POLLEN only; save every NECTAR for the endgame. Neither robot ever launches NECTAR. All POLLEN goes into the HIVE until 60 s left, then both robots claim FLOWERS with the stockpiled NECTAR and stack POLLEN on top.
+- **Flower Rush @ 60s**: Everything into the HIVE, then both robots swarm FLOWERS. Both robots launch POLLEN and NECTAR into the HIVE until FLOWERS unlock at 60 s, then both switch to claiming FLOWERS (one NECTAR + three POLLEN per trip).
+- **Split Endgame**: One robot keeps tipping, one robot builds FLOWERS. Robot 1 stays on the HIVE the whole match. Robot 2 launches POLLEN only (keeping NECTAR on the field) and moves to FLOWERS at 60 s.
+- **Late Cap**: Hive until 20 s left, then drop NECTAR on top of FLOWERS. Both robots cycle the HIVE until 20 s left, then carry NECTAR only and cap as many FLOWERS as possible, stealing ownership of whatever the opponent built.
+- **Builder + Capper**: Robot 2 builds FLOWERS at 60 s, Robot 1 caps at 15 s. Robot 1 cycles the HIVE and switches to capping FLOWERS with 15 s left. Robot 2 launches POLLEN only and builds FLOWERS from 60 s.
+- **Hive + Bottom Claim**: Robot 2 puts one NECTAR in every FLOWER at 60 s, then back to the HIVE. Robot 1 cycles the HIVE all match. Robot 2 does too until FLOWERS unlock at 60 s, then grabs the NECTAR the human player enters and drops one into each FLOWER nobody has claimed. The bottom NECTAR bonus (5 per FLOWER) can't be taken away, because NECTAR can't be pulled back out. Then it returns to the HIVE.
+- **Hive + Defender**: One robot shoots, the other guards the opponent's CELL. Robot 1 cycles the HIVE all match. In TELEOP, Robot 2 plays zone defense: it stands in front of the opponent's upward CELL and pushes robots that come to shoot (backing off before a 3-second PIN), then parks.
+
+## Optional
+
+- [Source code](https://github.com/6603GuildofGears/biobuzz-strategy-lab): TypeScript, Next.js
+- [How the simulation works](https://github.com/6603GuildofGears/biobuzz-strategy-lab/blob/main/docs/HOW_IT_WORKS.md)
+- [Chief Delphi thread](https://www.chiefdelphi.com/t/biobuzz-strategy-simulator-a-tool-for-analyzing-match-strategies/524529)
+- [r/FTC discussion: Is scoring with FLOWERS worth it?](https://www.reddit.com/r/FTC/comments/1wwutc8/is_scoring_with_flowers_worth_it/)

@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Assumptions } from "./assumptions";
 import { FeedbackLink } from "./feedback-link";
 import { FeedbackPrompt } from "./feedback-prompt";
+import { SiteFooter } from "./site-footer";
 import { Guide } from "./guide";
 import { ThemeToggle } from "./theme-toggle";
 import { MatchViewer } from "./match-viewer";
@@ -45,6 +46,11 @@ export function viewFromPath(pathname: string): View {
   return match?.[0] ?? "showdown";
 }
 
+/** Plain left clicks switch views in place. Ctrl/Cmd/Shift-clicks and middle clicks open the link as usual. */
+function inPlace(e: React.MouseEvent) {
+  return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+}
+
 function pathFor(view: View) {
   const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
   return `${base}${VIEW_PATH[view]}/`;
@@ -56,6 +62,14 @@ const MOBILE_NAV: { view: View; label: string; icon: React.ComponentType<{ class
   { view: "robots", label: "Robots", icon: SlidersHorizontal },
   { view: "strategies", label: "Strategies", icon: Layers },
   { view: "guide", label: "Guide", icon: BookOpen },
+];
+
+const DESKTOP_TABS: { view: View; label: string }[] = [
+  { view: "showdown", label: "Strategy showdown" },
+  { view: "match", label: "Match viewer" },
+  { view: "strategies", label: "Strategies" },
+  { view: "rules", label: "Rules & assumptions" },
+  { view: "guide", label: "How to use" },
 ];
 
 /** Set once someone finishes or skips the tour, so it only opens by itself on their first visit. */
@@ -169,7 +183,7 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
           <ThemeToggle />
         </div>
         <p className={cn("max-w-3xl text-sm text-muted-foreground", view !== "showdown" && "hidden lg:block")}>
-          Monte Carlo simulator for the 2026–27 FTC game. Set how fast and accurate your robots are, then play the strategies against each other to see which one wins the most. Built by FTC Team 6603, Guild of Gears.
+          Free FTC BIOBUZZ strategy simulator for the 2026–27 FIRST Tech Challenge season. Set how fast and accurate your robots are, then play the strategies against each other to see which one wins the most. Built by FTC Team 6603, Guild of Gears.
         </p>
       </header>
 
@@ -237,12 +251,18 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
 
         <main className={cn("min-w-0", showRobots && "hidden")}>
           <Tabs value={view} onValueChange={(v) => go(v as View)}>
+            {/* Real links, so search engines can find every section. Clicking still switches in place (onValueChange). */}
             <TabsList className="hidden flex-wrap lg:flex">
-              <TabsTrigger value="showdown">Strategy showdown</TabsTrigger>
-              <TabsTrigger value="match">Match viewer</TabsTrigger>
-              <TabsTrigger value="strategies">Strategies</TabsTrigger>
-              <TabsTrigger value="rules">Rules &amp; assumptions</TabsTrigger>
-              <TabsTrigger value="guide">How to use</TabsTrigger>
+              {DESKTOP_TABS.map(({ view: v, label }) => (
+                <TabsTrigger
+                  key={v}
+                  value={v}
+                  nativeButton={false}
+                  render={<a href={pathFor(v)} onClick={(e) => inPlace(e) && e.preventDefault()} />}
+                >
+                  {label}
+                </TabsTrigger>
+              ))}
             </TabsList>
             <TabsContent value="showdown" className="lg:pt-3">
               {robotsReady && (
@@ -298,9 +318,13 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
             const active = view === v || (v === "guide" && view === "rules");
             return (
               <li key={v}>
-                <button
-                  type="button"
-                  onClick={() => go(v)}
+                <a
+                  href={pathFor(v)}
+                  onClick={(e) => {
+                    if (!inPlace(e)) return;
+                    e.preventDefault();
+                    go(v);
+                  }}
                   data-tour={v === "guide" ? "help" : undefined}
                   aria-current={active ? "page" : undefined}
                   className={cn(
@@ -312,12 +336,14 @@ export function Simulator({ initialView = "showdown" }: { initialView?: View }) 
                     <Icon className="size-5" />
                   </span>
                   {label}
-                </button>
+                </a>
               </li>
             );
           })}
         </ul>
       </nav>
+
+      <SiteFooter />
 
       <FeedbackPrompt paused={tourStart !== null} />
 

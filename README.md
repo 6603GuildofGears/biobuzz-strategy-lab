@@ -1,6 +1,8 @@
 # BIOBUZZ Strategy Lab
 
-A Monte Carlo strategy simulator for the FIRST Tech Challenge 2026–27 game **BIOBUZZ presented by RTX**. You set how fast and accurate your robots are, then play a set of alliance strategies against each other over hundreds of simulated matches to see which one wins most often.
+A free **FTC BIOBUZZ strategy simulator** for the FIRST Tech Challenge 2026–27 game **BIOBUZZ presented by RTX**, built by FTC Team 6603 Guild of Gears. You set how fast and accurate your robots are, then play a set of alliance strategies against each other over hundreds of simulated matches to see which one wins most often.
+
+**Try it: https://biobuzz-strategy-lab.com**
 
 ## What it does
 
@@ -37,6 +39,10 @@ These addresses open a section directly. The home page is unchanged.
 - https://biobuzz-strategy-lab.com/match
 - https://biobuzz-strategy-lab.com/results
 - https://biobuzz-strategy-lab.com/robots
+
+## Search engines and AI assistants
+
+Page titles, descriptions, canonical URLs and link previews live in `src/lib/seo.ts`. The Guide's FAQ (`src/components/sim/faq.tsx`) is also published as structured data. `public/` holds `robots.txt`, `sitemap.xml`, `llms.txt` (a plain-text summary for AI assistants) and `og.png` (the link preview picture). When you add a page or a strategy, update `sitemap.xml` and `llms.txt` too.
 
 ## Hosting on GitHub Pages
 
